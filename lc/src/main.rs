@@ -10,7 +10,7 @@ use anyhow::{anyhow, Result};
 use lc_core::*;
 use lc_interpreter::*;
 
-fn run<'a>(input: String, context: &mut Interpreter) -> Result<()> {
+fn run(input: String, context: &mut Interpreter) -> Result<()> {
     let mut scanner = Scanner::new(input);
     let tokens = scanner.scan_tokens();
     let mut parser = Parser::new(tokens);
