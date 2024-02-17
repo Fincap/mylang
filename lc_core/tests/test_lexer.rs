@@ -1,12 +1,14 @@
 use lc_core::*;
 use TokenType::*;
 
-fn assert_lexer_tokens(source: &'static str, output: Vec<TokenType>, len: usize) {
+fn assert_lexer_tokens(source: &'static str, output: Vec<TokenType>, len: usize) -> Vec<Token> {
     let tokens = Scanner::new(source.to_string()).scan_tokens();
+    dbg!(&tokens);
     assert_eq!(tokens.len(), len);
     for (t, o) in tokens.iter().zip(output.iter()) {
         assert_eq!(t.t_type, *o);
     }
+    tokens
 }
 
 #[test]
@@ -91,11 +93,11 @@ fn test_comments() {
             True,
             RightParen,
             Print,
-            String("hello world!".to_string()),
+            String("hello world!".into()),
             EOF,
         ],
         7,
-    )
+    );
 }
 
 #[test]
@@ -107,14 +109,14 @@ fn test_literals() {
             Equal,
             Number(13.0),
             Equal,
-            String("string".to_string()),
-            String("another string".to_string()),
+            String("string".into()),
+            String("another string".into()),
             Semicolon,
             Number(3.14159),
             EOF,
         ],
         9,
-    )
+    );
 }
 
 #[test]
@@ -128,7 +130,7 @@ fn test_line_numbers() {
     
     */
     return"
-        .to_string();
+        .into();
     let output = vec![
         Number(6.0),
         Comma,
@@ -136,18 +138,67 @@ fn test_line_numbers() {
         Semicolon,
         Identifier,
         Comma,
-        String("spaced_gap".to_string()),
+        String("spaced_gap".into()),
         Return,
         EOF,
     ];
     let expected_lines = vec![1, 1, 1, 1, 2, 2, 4, 9, 9];
-    let tokens = Scanner::new(source.to_string()).scan_tokens();
-    assert_eq!(tokens.len(), 9);
-    for (t, o) in tokens.iter().zip(output.iter()) {
-        assert_eq!(t.t_type, *o);
-    }
-
+    let tokens = assert_lexer_tokens(source, output, 9);
     for (t, l) in tokens.iter().zip(expected_lines.iter()) {
         assert_eq!(t.line, *l);
     }
+}
+
+#[test]
+fn test_unterminated_string() {
+    assert_lexer_tokens(
+        "\"terminated\"identifer",
+        vec![String("terminated".into()), Identifier, EOF],
+        3,
+    );
+    assert_lexer_tokens(
+        "\"terminated\"\"unterminated",
+        vec![String("terminated".into()), EOF],
+        2,
+    );
+    assert_lexer_tokens("\"unterminated", vec![EOF], 1);
+    assert_lexer_tokens("\"\"", vec![String("".into()), EOF], 2);
+}
+
+#[test]
+fn test_identifiers() {
+    assert_lexer_tokens(
+        "valid; _alsoValid; 12ident; id_valid6",
+        vec![
+            Identifier,
+            Semicolon,
+            Identifier,
+            Semicolon,
+            Number(12.0),
+            Identifier,
+            Semicolon,
+            Identifier,
+            EOF,
+        ],
+        9,
+    );
+}
+
+#[test]
+fn test_invalid() {
+    assert_lexer_tokens(
+        "@test;$let?;256%8'ident'~\"#lc@email.au\"",
+        vec![
+            Identifier,
+            Semicolon,
+            Let,
+            Semicolon,
+            Number(256.0),
+            Number(8.0),
+            Identifier,
+            String("#lc@email.au".into()),
+            EOF,
+        ],
+        9,
+    );
 }
