@@ -26,5 +26,5 @@ pub fn runtime_error(err: TokenError) -> anyhow::Result<()> {
 }
 
 fn report(line: usize, loc: String, message: String) {
-    println!("[line {}] Error{}: {}", line, loc, message);
+    eprintln!("[line {}] Error{}: {}", line, loc, message);
 }

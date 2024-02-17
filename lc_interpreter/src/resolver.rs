@@ -14,14 +14,14 @@ enum FunctionKind {
 }
 
 #[derive(Debug)]
-pub struct Resolver<'a> {
-    interpreter: &'a mut Interpreter,
+pub struct Resolver<'a, 'b> {
+    interpreter: &'a mut Interpreter<'b>,
     scopes: Vec<Scope>,
     current_function: FunctionKind,
     had_error: bool,
 }
-impl<'a> Resolver<'a> {
-    pub fn new(interpreter: &'a mut Interpreter) -> Self {
+impl<'a, 'b> Resolver<'a, 'b> {
+    pub fn new(interpreter: &'a mut Interpreter<'b>) -> Self {
         Self {
             interpreter,
             scopes: Vec::new(),

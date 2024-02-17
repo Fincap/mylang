@@ -1,4 +1,5 @@
-use std::collections::HashMap;
+use core::fmt;
+use std::{collections::HashMap, io};
 
 use crate::*;
 use lc_core::*;
@@ -6,13 +7,21 @@ use lc_core::*;
 type ExprResult = Result<Value, Throw>;
 type StmtResult = Result<(), Throw>;
 
-#[derive(Debug)]
-pub struct Interpreter {
+pub struct Interpreter<'a> {
     pub environment: EnvironmentStack,
     locals: HashMap<Expr, usize>,
+    output: &'a mut dyn io::Write,
 }
-impl Interpreter {
-    pub fn new() -> Self {
+impl<'a> fmt::Debug for Interpreter<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Interpreter")
+            .field("environment", &self.environment)
+            .field("locals", &self.locals)
+            .finish()
+    }
+}
+impl<'a> Interpreter<'a> {
+    pub fn new(output: &'a mut dyn io::Write) -> Self {
         let mut globals = Environment::new();
         globals.define("clock".into(), Value::Function(Box::new(LcClock)));
         globals.define("typeof".into(), Value::Function(Box::new(LcTypeof)));
@@ -20,6 +29,7 @@ impl Interpreter {
         Self {
             environment,
             locals: HashMap::new(),
+            output,
         }
     }
 
@@ -105,7 +115,9 @@ impl Interpreter {
     fn visit_print_stmt(&mut self, ex: &Expr) -> StmtResult {
         match self.evaluate(ex) {
             Ok(lit) => {
-                println!("{}", lit.as_str());
+                self.output
+                    .write_fmt(format_args!("{}\n", lit.as_str()))
+                    .unwrap();
                 Ok(())
             }
             Err(err) => Err(err),
