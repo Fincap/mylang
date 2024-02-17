@@ -1,0 +1,3 @@
+[workspace]
+members = [ "lc","lc_core", "lc_interpreter"]
+resolver = "2"

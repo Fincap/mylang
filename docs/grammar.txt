@@ -1,0 +1,103 @@
+---
+Statement grammar
+---
+program         ->  declaration* EOF ;
+
+declaration     ->  letDecl 
+                    | fnDecl
+                    | statement ;
+
+statement       ->  exprStmt 
+                    | block 
+                    | returnStmt
+                    | printStmt 
+                    | ifStmt
+                    | whileStmt 
+                    | forStmt ;
+
+exprStmt        ->  expression ";" ;
+block           -> "{" declaration* "}" ;
+
+returnStmt      ->  "return" expression ";" ;
+
+printStmt       ->  "print" expression ";" ;
+
+ifStmt          ->  "if" "(" expression ")" statement
+                    ( "else" statement )? ;
+whileStmt       ->  "while" "(" expression ")" statement ;
+forStmt         ->  "for" "(" ( letDecl | exprStmt | ";" )
+                    expression? ";"
+                    expression? ")" statement ;
+
+letDecl         ->  "let" IDENTIFIER ( "=" expression )? ";" ;
+
+fnDecl          ->  "fn" function ;
+function        ->  IDENTIFIER "(" parameters? ")" block ;
+parameters      -> IDENTIFIER ( "," IDENTIFIER )* ;
+
+---
+Expression grammar, creating order of precedence (lowest-to-highest) and associativity
+---
+expression      ->  assignment ;
+
+assignment      ->  IDENTIFIER "=" assignment
+                    | compound_assign ;
+
+compound_assign ->  IDENTIFIER ( "+=" | "-=" | "*=" | "/=" ) assignment 
+                    | logic_or;
+
+logic_or        ->  logic_and ( "or" logic_and )* ;
+logic_and       ->  equality ( "and" equality )* ;
+
+equality        -> comparison ( ( "!=" | "==" ) comparison )* ;
+
+comparison      -> term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+
+term            ->  factor ( ( "-" | "+" ) factor )* ;
+
+factor          ->  unary ( ( "/" | "*" ) unary )* ;            // right-sequential growth creates left-associativity
+
+unary           ->  ( "!" | "-" ) unary                         // right-recursive growth creates right-associativity
+                    | inc_dec ;
+
+inc_dec         ->  IDENTIFIER ( "++" | "--" )
+                    | call ;
+
+call            ->  primary ( "(" arguments? ")" )* ;
+arguments       ->  expression ( "," expression )* ;
+
+primary         ->  NUMBER | STRING | "true" | "false" | "null"
+                    | "(" expression ")" 
+                    | IDENTIFIER ;
+
+
+---
+Sugary assignments
+---
+e.g. (a += 5), (x *= x)
+Right-associative
+[left] [op]= [right]
+left must be IDENTIFIER
+right must be expression that resolves into number
+expands into
+[left] = [left] [op] [right]
+Assign([left], Binary([left], [op], [right]))
+Always has lower precedence than binary operations
+
+x = y *= 5;
+
+---
+Sugary X-crements
+---
+e.g. (x++), (x--), (--x)?
+Expression
+Left-associative
+Can only be postfix, always evaluates to x post-increment
+[left][op]
+expands into
+[left] = [left] [op] 1
+Assign([left], Binary[left], [op], 1)
+
+-x++
+equivalent to
+-(x++)
