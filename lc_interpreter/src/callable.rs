@@ -1,7 +1,5 @@
 use std::{
-    cell::RefCell,
     fmt::Debug,
-    rc::Rc,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -84,7 +82,7 @@ pub struct Function {
     name: Token,
     params: Vec<Token>,
     body: Vec<Stmt>,
-    closure: Rc<RefCell<Environment>>,
+    closure: Environment,
 }
 impl<'a> Callable<'a> for Function {
     fn call(&mut self, interpreter: &'a mut Interpreter, arguments: &Vec<Value>) -> Throw {
@@ -99,12 +97,12 @@ impl<'a> Callable<'a> for Function {
             )
                 .into();
         }
-        let mut environment = Environment::with_parent(self.closure.to_owned());
         for i in 0..self.params.len() {
-            environment.define(self.params[i].lexeme.to_owned(), arguments[i].to_owned());
+            self.closure
+                .define(self.params[i].lexeme.to_owned(), arguments[i].to_owned());
         }
 
-        match interpreter.execute_block(&self.body, environment) {
+        match interpreter.execute_block(&self.body, &self.closure) {
             Ok(_) => Literal::Null.into(),
             Err(throw) => throw,
         }
@@ -119,12 +117,7 @@ impl<'a> Callable<'a> for Function {
     }
 }
 impl Function {
-    pub fn new(
-        name: &Token,
-        params: &Vec<Token>,
-        body: &Vec<Stmt>,
-        closure: &Rc<RefCell<Environment>>,
-    ) -> Self {
+    pub fn new(name: &Token, params: &Vec<Token>, body: &Vec<Stmt>, closure: &Environment) -> Self {
         Self {
             name: name.to_owned(),
             params: params.to_owned(),

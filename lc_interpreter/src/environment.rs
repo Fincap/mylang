@@ -1,26 +1,88 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 
 use crate::*;
 use lc_core::*;
 
-type ParentEnv = Rc<RefCell<Environment>>;
+#[derive(Clone, Debug)]
+pub struct EnvironmentStack {
+    stack: Vec<Environment>,
+}
+impl EnvironmentStack {
+    pub fn new(globals: Environment) -> Self {
+        Self {
+            stack: vec![globals],
+        }
+    }
+
+    pub fn top(&self) -> Environment {
+        self.stack.last().unwrap().clone()
+    }
+
+    pub fn begin_scope(&mut self, environment: Environment) {
+        self.stack.push(environment);
+    }
+
+    pub fn end_scope(&mut self) {
+        self.stack.pop();
+    }
+
+    pub fn define(&mut self, name: String, value: Value) {
+        self.stack.last_mut().unwrap().define(name, value);
+    }
+
+    pub fn get(&self, name: &Token) -> Result<Value, TokenError> {
+        for env in self.stack.iter().rev() {
+            if let Ok(value) = env.get(name) {
+                return Ok(value);
+            }
+        }
+        Err((name, format!("Undefined variable '{}'", name.lexeme)).into())
+    }
+
+    pub fn get_at(&self, name: &Token, depth: usize) -> Result<Value, TokenError> {
+        self.stack
+            .get(self.stack.len() - 1 - depth)
+            .unwrap()
+            .get(name)
+    }
+
+    pub fn global_get(&self, name: &Token) -> Result<Value, TokenError> {
+        self.stack.first().unwrap().get(name)
+    }
+
+    pub fn assign(&mut self, name: &Token, value: Value) -> Result<(), TokenError> {
+        for env in self.stack.iter_mut().rev() {
+            if env.contains(name) {
+                if env.assign(name, value.to_owned()).is_ok() {
+                    return Ok(());
+                }
+            }
+        }
+        Err((name, format!("Undefined variable '{}'", name.lexeme)).into())
+    }
+
+    pub fn assign_at(
+        &mut self,
+        name: &Token,
+        value: Value,
+        depth: usize,
+    ) -> Result<(), TokenError> {
+        let index = self.stack.len() - 1 - depth;
+        self.stack.get_mut(index).unwrap().assign(name, value)
+    }
+
+    pub fn global_assign(&mut self, name: &Token, value: Value) -> Result<(), TokenError> {
+        self.stack.first_mut().unwrap().assign(name, value)
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct Environment {
-    enclosing: Option<ParentEnv>,
     values: HashMap<String, Value>,
 }
 impl Environment {
     pub fn new() -> Self {
         Self {
-            enclosing: None,
-            values: HashMap::new(),
-        }
-    }
-
-    pub fn with_parent(enclosing: ParentEnv) -> Self {
-        Self {
-            enclosing: Some(enclosing),
             values: HashMap::new(),
         }
     }
@@ -32,49 +94,21 @@ impl Environment {
     pub fn get(&self, name: &Token) -> Result<Value, TokenError> {
         if let Some(value) = self.values.get(&name.lexeme) {
             Ok(value.clone())
-        } else if let Some(enclosing) = &self.enclosing {
-            enclosing.borrow().get(name)
         } else {
             Err((name, format!("Undefined variable '{}'", name.lexeme)).into())
         }
-    }
-
-    pub fn get_at(&self, name: &Token, depth: usize) -> Result<Value, TokenError> {
-        Ok(self
-            .ancestor(depth)
-            .borrow()
-            .values
-            .get(&name.lexeme)
-            .unwrap()
-            .to_owned())
     }
 
     pub fn assign(&mut self, name: &Token, value: Value) -> Result<(), TokenError> {
         if self.values.contains_key(&name.lexeme) {
             self.values.insert(name.lexeme.to_owned(), value);
             Ok(())
-        } else if let Some(enclosing) = &self.enclosing {
-            enclosing.borrow_mut().assign(name, value)
         } else {
             Err((name, format!("Undefined variable '{}'", name.lexeme)).into())
         }
     }
 
-    pub fn assign_at(&self, name: &Token, value: Value, depth: usize) -> Result<(), TokenError> {
-        dbg!(&name);
-        dbg!(&depth);
-        self.ancestor(depth)
-            .borrow_mut()
-            .values
-            .insert(name.lexeme.to_owned(), value);
-        Ok(())
-    }
-
-    fn ancestor(&self, depth: usize) -> ParentEnv {
-        let mut environment = self.to_owned();
-        for _ in 0..depth {
-            environment = environment.enclosing.unwrap().borrow().to_owned()
-        }
-        Rc::new(RefCell::new(environment))
+    pub fn contains(&self, name: &Token) -> bool {
+        self.values.contains_key(&name.lexeme)
     }
 }

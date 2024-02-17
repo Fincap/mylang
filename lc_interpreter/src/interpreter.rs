@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 
 use crate::*;
 use lc_core::*;
@@ -8,22 +8,16 @@ type StmtResult = Result<(), Throw>;
 
 #[derive(Debug)]
 pub struct Interpreter {
-    pub globals: Rc<RefCell<Environment>>,
-    pub environment: Rc<RefCell<Environment>>,
+    pub environment: EnvironmentStack,
     locals: HashMap<Expr, usize>,
 }
 impl Interpreter {
     pub fn new() -> Self {
-        let globals = Rc::new(RefCell::new(Environment::new()));
-        globals
-            .borrow_mut()
-            .define("clock".into(), Value::Function(Box::new(LcClock)));
-        globals
-            .borrow_mut()
-            .define("typeof".into(), Value::Function(Box::new(LcTypeof)));
-        let environment = globals.to_owned();
+        let mut globals = Environment::new();
+        globals.define("clock".into(), Value::Function(Box::new(LcClock)));
+        globals.define("typeof".into(), Value::Function(Box::new(LcTypeof)));
+        let environment = EnvironmentStack::new(globals);
         Self {
-            globals,
             environment,
             locals: HashMap::new(),
         }
@@ -63,25 +57,21 @@ impl Interpreter {
     pub fn execute_block(
         &mut self,
         statements: &Vec<Stmt>,
-        environment: Environment,
+        environment: &Environment,
     ) -> StmtResult {
-        let previous = self.environment.to_owned();
-        self.environment = Rc::new(RefCell::new(environment));
+        self.environment.begin_scope(environment.to_owned());
         for statement in statements {
             if let Err(e) = self.execute(statement) {
-                self.environment = previous;
+                self.environment.end_scope();
                 return Err(e);
             }
         }
-        self.environment = previous;
+        self.environment.end_scope();
         Ok(())
     }
 
     fn visit_block_stmt(&mut self, statements: &Vec<Stmt>) -> StmtResult {
-        self.execute_block(
-            statements,
-            Environment::with_parent(self.environment.to_owned()),
-        )
+        self.execute_block(statements, &Environment::new())
     }
 
     fn visit_expr_stmt(&mut self, ex: &Expr) -> StmtResult {
@@ -92,9 +82,8 @@ impl Interpreter {
     }
 
     fn visit_fn_stmt(&mut self, name: &Token, params: &Vec<Token>, body: &Vec<Stmt>) -> StmtResult {
-        let function = Function::new(name, params, body, &self.environment);
+        let function = Function::new(name, params, body, &self.environment.top());
         self.environment
-            .borrow_mut()
             .define(name.lexeme.to_owned(), function.into());
         Ok(())
     }
@@ -130,9 +119,7 @@ impl Interpreter {
 
     fn visit_let_stmt(&mut self, id: &Token, initializer: &Expr) -> StmtResult {
         let value = self.evaluate(initializer)?;
-        self.environment
-            .borrow_mut()
-            .define(id.lexeme.to_owned(), value.into());
+        self.environment.define(id.lexeme.to_owned(), value.into());
         Ok(())
     }
 
@@ -164,12 +151,10 @@ impl Interpreter {
         let value = self.evaluate(right)?;
         if let Some(distance) = self.locals.get(ex) {
             self.environment
-                .borrow_mut()
                 .assign_at(id, value.to_owned(), *distance)?;
         } else {
-            self.globals
-                .borrow_mut()
-                .assign(id, value.to_owned().into())?;
+            self.environment
+                .global_assign(id, value.to_owned().into())?;
         }
         Ok(value)
     }
@@ -254,7 +239,7 @@ impl Interpreter {
         for arg in args {
             arguments.push(self.evaluate(arg)?);
         }
-        let value = self.environment.borrow().get(&identifier)?;
+        let value = self.environment.get(&identifier)?;
         match value {
             Value::Literal(_) => Err((identifier, "Not a valid function call.").into()),
             Value::Function(mut func) => match func.call(self, &arguments) {
@@ -315,8 +300,8 @@ impl Interpreter {
 
     fn look_up_variable(&self, ex: &Expr, id: &Token) -> ExprResult {
         match self.locals.get(ex) {
-            Some(distance) => Ok(self.environment.borrow_mut().get_at(&id, *distance)?),
-            None => Ok(self.globals.borrow_mut().get(&id)?),
+            Some(distance) => Ok(self.environment.get_at(&id, *distance)?),
+            None => Ok(self.environment.global_get(&id)?),
         }
     }
 
