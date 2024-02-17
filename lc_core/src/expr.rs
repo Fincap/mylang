@@ -5,65 +5,92 @@ pub const LIMIT_FN_ARGS: usize = 255;
 #[derive(Clone, Debug)]
 pub enum ExprKind {
     /// (`identifier`, `initializer`)
-    Assign(Token, Box<ExprKind>),
+    Assign(Token, Box<Expr>),
     /// (`left`, `op`, `right`)
-    Binary(Box<ExprKind>, Token, Box<ExprKind>),
+    Binary(Box<Expr>, Token, Box<Expr>),
     /// (`callee`, `paren`, `args`)
-    Call(Box<ExprKind>, Token, Vec<ExprKind>),
+    Call(Box<Expr>, Token, Vec<Expr>),
     /// (`expression`)
-    Grouping(Box<ExprKind>),
+    Grouping(Box<Expr>),
     /// (`literal`)
     Literal(Literal),
     /// (`left`, `op`, `right`)
-    Logical(Box<ExprKind>, Token, Box<ExprKind>),
+    Logical(Box<Expr>, Token, Box<Expr>),
     /// (`op`, `right`)
-    Unary(Token, Box<ExprKind>),
+    Unary(Token, Box<Expr>),
     /// (`identifier`)
     Variable(Token),
 }
-impl ExprKind {
-    pub fn assign(var: Token, ex: ExprKind) -> Self {
-        Self::Assign(var, Box::new(ex))
+
+#[derive(Clone, Debug)]
+pub struct Expr {
+    pub kind: ExprKind,
+}
+impl Expr {
+    pub fn assign(var: Token, ex: Expr) -> Self {
+        Self {
+            kind: ExprKind::Assign(var, Box::new(ex)),
+        }
     }
 
-    pub fn binary(left: ExprKind, op: Token, right: ExprKind) -> Self {
-        Self::Binary(Box::new(left), op, Box::new(right))
+    pub fn binary(left: Expr, op: Token, right: Expr) -> Self {
+        Self {
+            kind: ExprKind::Binary(Box::new(left), op, Box::new(right)),
+        }
     }
 
-    pub fn call(callee: ExprKind, paren: Token, args: Vec<ExprKind>) -> Self {
-        Self::Call(Box::new(callee), paren, args)
+    pub fn call(callee: Expr, paren: Token, args: Vec<Expr>) -> Self {
+        Self {
+            kind: ExprKind::Call(Box::new(callee), paren, args),
+        }
     }
 
-    pub fn grouping(ex: ExprKind) -> Self {
-        Self::Grouping(Box::new(ex))
+    pub fn grouping(ex: Expr) -> Self {
+        Self {
+            kind: ExprKind::Grouping(Box::new(ex)),
+        }
     }
 
     pub fn literal_string(str: String) -> Self {
-        Self::Literal(Literal::String(str))
+        Self {
+            kind: ExprKind::Literal(Literal::String(str)),
+        }
     }
 
     pub fn literal_number(num: f64) -> Self {
-        Self::Literal(Literal::Number(num))
+        Self {
+            kind: ExprKind::Literal(Literal::Number(num)),
+        }
     }
 
     pub fn literal_bool(b: bool) -> Self {
-        Self::Literal(Literal::Bool(b))
+        Self {
+            kind: ExprKind::Literal(Literal::Bool(b)),
+        }
     }
 
     pub fn literal_null() -> Self {
-        Self::Literal(Literal::Null)
+        Self {
+            kind: ExprKind::Literal(Literal::Null),
+        }
     }
 
-    pub fn logical(left: ExprKind, op: Token, right: ExprKind) -> Self {
-        Self::Logical(Box::new(left), op, Box::new(right))
+    pub fn logical(left: Expr, op: Token, right: Expr) -> Self {
+        Self {
+            kind: ExprKind::Logical(Box::new(left), op, Box::new(right)),
+        }
     }
 
-    pub fn unary(op: Token, ex: ExprKind) -> Self {
-        Self::Unary(op, Box::new(ex))
+    pub fn unary(op: Token, ex: Expr) -> Self {
+        Self {
+            kind: ExprKind::Unary(op, Box::new(ex)),
+        }
     }
 
     pub fn var(var: Token) -> Self {
-        Self::Variable(var)
+        Self {
+            kind: ExprKind::Variable(var),
+        }
     }
 }
 

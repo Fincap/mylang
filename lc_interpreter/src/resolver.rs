@@ -47,17 +47,17 @@ impl<'a> Resolver<'a> {
     fn resolve_stmt(&mut self, stmt: &Stmt) -> ResolverResult {
         match stmt {
             Stmt::Block(ex) => self.visit_block_stmt(ex)?,
-            Stmt::Expression(ex) => self.resolve_expr(ex)?,
+            Stmt::Expression(ex) => self.resolve_expr(&ex)?,
             Stmt::Function(id, params, body) => {
                 self.visit_function_stmt(id, params, body, FunctionKind::Function)?
             }
             Stmt::If(condition, st_then, st_else) => {
-                self.visit_if_stmt(condition, st_then, st_else)?
+                self.visit_if_stmt(&condition, st_then, st_else)?
             }
-            Stmt::Print(ex) => self.resolve_expr(ex)?,
-            Stmt::Return(ex) => self.visit_return_stmt(ex)?,
-            Stmt::Let(id, initializer) => self.visit_let_stmt(id, initializer)?,
-            Stmt::While(condition, body) => self.visit_while_stmt(condition, body)?,
+            Stmt::Print(ex) => self.resolve_expr(&ex)?,
+            Stmt::Return(ex) => self.visit_return_stmt(&ex)?,
+            Stmt::Let(id, initializer) => self.visit_let_stmt(id, &initializer)?,
+            Stmt::While(condition, body) => self.visit_while_stmt(&condition, body)?,
         };
         Ok(())
     }
@@ -71,7 +71,7 @@ impl<'a> Resolver<'a> {
 
     fn visit_if_stmt(
         &mut self,
-        condition: &ExprKind,
+        condition: &Expr,
         st_then: &Box<Stmt>,
         st_else: &Option<Box<Stmt>>,
     ) -> ResolverResult {
@@ -83,7 +83,7 @@ impl<'a> Resolver<'a> {
         Ok(())
     }
 
-    fn visit_return_stmt(&mut self, expr: &ExprKind) -> ResolverResult {
+    fn visit_return_stmt(&mut self, expr: &Expr) -> ResolverResult {
         if self.current_function == FunctionKind::None {
             Err((
                 &Token::new(TokenType::Return, "return".to_string(), 0),
@@ -118,45 +118,45 @@ impl<'a> Resolver<'a> {
         Ok(())
     }
 
-    fn visit_let_stmt(&mut self, id: &Token, initializer: &ExprKind) -> ResolverResult {
+    fn visit_let_stmt(&mut self, id: &Token, initializer: &Expr) -> ResolverResult {
         self.declare(id)?;
         self.resolve_expr(initializer)?;
         self.define(id);
         Ok(())
     }
 
-    fn visit_while_stmt(&mut self, condition: &ExprKind, body: &Box<Stmt>) -> ResolverResult {
+    fn visit_while_stmt(&mut self, condition: &Expr, body: &Box<Stmt>) -> ResolverResult {
         self.resolve_expr(condition)?;
         self.resolve_stmt(body)?;
         Ok(())
     }
 
-    fn resolve_expr(&mut self, expr: &ExprKind) -> ResolverResult {
-        match expr {
-            ExprKind::Assign(id, ex) => self.visit_assign_expr(id, ex),
-            ExprKind::Binary(left, _, right) => self.visit_binary_expr(left, right),
-            ExprKind::Call(callee, _, args) => self.visit_call_expr(callee, args),
-            ExprKind::Grouping(ex) => self.resolve_expr(ex),
+    fn resolve_expr(&mut self, expr: &Expr) -> ResolverResult {
+        match &expr.kind {
+            ExprKind::Assign(id, ex) => self.visit_assign_expr(&id, &ex),
+            ExprKind::Binary(left, _, right) => self.visit_binary_expr(&left, &right),
+            ExprKind::Call(callee, _, args) => self.visit_call_expr(&callee, &args),
+            ExprKind::Grouping(ex) => self.resolve_expr(&ex),
             ExprKind::Literal(_) => Ok(()),
-            ExprKind::Logical(left, _, right) => self.visit_binary_expr(left, right),
-            ExprKind::Unary(_, right) => self.resolve_expr(right),
-            ExprKind::Variable(id) => self.visit_var_expr(id),
+            ExprKind::Logical(left, _, right) => self.visit_binary_expr(&left, &right),
+            ExprKind::Unary(_, right) => self.resolve_expr(&right),
+            ExprKind::Variable(id) => self.visit_var_expr(&id),
         }
     }
 
-    fn visit_assign_expr(&mut self, id: &Token, expr: &Box<ExprKind>) -> ResolverResult {
+    fn visit_assign_expr(&mut self, id: &Token, expr: &Box<Expr>) -> ResolverResult {
         self.resolve_expr(expr)?;
         self.resolve_local(id);
         Ok(())
     }
 
-    fn visit_binary_expr(&mut self, left: &Box<ExprKind>, right: &Box<ExprKind>) -> ResolverResult {
+    fn visit_binary_expr(&mut self, left: &Box<Expr>, right: &Box<Expr>) -> ResolverResult {
         self.resolve_expr(left)?;
         self.resolve_expr(right)?;
         Ok(())
     }
 
-    fn visit_call_expr(&mut self, callee: &Box<ExprKind>, args: &Vec<ExprKind>) -> ResolverResult {
+    fn visit_call_expr(&mut self, callee: &Box<Expr>, args: &Vec<Expr>) -> ResolverResult {
         self.resolve_expr(callee)?;
         for arg in args {
             self.resolve_expr(arg)?;

@@ -84,7 +84,7 @@ impl Interpreter {
         )
     }
 
-    fn visit_expr_stmt(&mut self, ex: &ExprKind) -> StmtResult {
+    fn visit_expr_stmt(&mut self, ex: &Expr) -> StmtResult {
         match self.evaluate(ex) {
             Ok(_) => Ok(()),
             Err(err) => Err(err),
@@ -101,7 +101,7 @@ impl Interpreter {
 
     fn visit_if_stmt(
         &mut self,
-        condition: &ExprKind,
+        condition: &Expr,
         st_then: &Box<Stmt>,
         st_else: &Option<Box<Stmt>>,
     ) -> StmtResult {
@@ -113,7 +113,7 @@ impl Interpreter {
         Ok(())
     }
 
-    fn visit_print_stmt(&mut self, ex: &ExprKind) -> StmtResult {
+    fn visit_print_stmt(&mut self, ex: &Expr) -> StmtResult {
         match self.evaluate(ex) {
             Ok(lit) => {
                 println!("{}", lit.as_str());
@@ -123,12 +123,12 @@ impl Interpreter {
         }
     }
 
-    fn visit_return_stmt(&mut self, ex: &ExprKind) -> StmtResult {
+    fn visit_return_stmt(&mut self, ex: &Expr) -> StmtResult {
         let value = self.evaluate(ex)?;
         Err(value.into())
     }
 
-    fn visit_let_stmt(&mut self, id: &Token, initializer: &ExprKind) -> StmtResult {
+    fn visit_let_stmt(&mut self, id: &Token, initializer: &Expr) -> StmtResult {
         let value = self.evaluate(initializer)?;
         self.environment
             .borrow_mut()
@@ -136,31 +136,31 @@ impl Interpreter {
         Ok(())
     }
 
-    fn visit_while_stmt(&mut self, condition: &ExprKind, body: &Box<Stmt>) -> StmtResult {
+    fn visit_while_stmt(&mut self, condition: &Expr, body: &Box<Stmt>) -> StmtResult {
         while self.evaluate(condition)?.is_truthy() {
             self.execute(&body)?;
         }
         Ok(())
     }
 
-    fn evaluate(&mut self, ex: &ExprKind) -> ExprResult {
+    fn evaluate(&mut self, ex: &Expr) -> ExprResult {
         self.visit_expr(ex)
     }
 
-    fn visit_expr(&mut self, ex: &ExprKind) -> ExprResult {
-        match ex {
-            ExprKind::Assign(id, right) => self.visit_assign_expr(id, right),
-            ExprKind::Binary(left, op, right) => self.visit_binary_expr(left, op, right),
-            ExprKind::Call(callee, paren, args) => self.visit_call_expr(callee, paren, args),
-            ExprKind::Grouping(ex) => self.evaluate(ex),
+    fn visit_expr(&mut self, ex: &Expr) -> ExprResult {
+        match &ex.kind {
+            ExprKind::Assign(id, right) => self.visit_assign_expr(&id, &right),
+            ExprKind::Binary(left, op, right) => self.visit_binary_expr(&left, &op, &right),
+            ExprKind::Call(callee, paren, args) => self.visit_call_expr(&callee, &paren, &args),
+            ExprKind::Grouping(ex) => self.evaluate(&ex),
             ExprKind::Literal(lit) => Ok(lit.to_owned().into()),
-            ExprKind::Logical(left, op, right) => self.visit_logical_expr(left, op, right),
-            ExprKind::Unary(op, ex) => self.visit_unary_expr(op, ex),
-            ExprKind::Variable(id) => self.visit_var_expr(id),
+            ExprKind::Logical(left, op, right) => self.visit_logical_expr(&left, &op, &right),
+            ExprKind::Unary(op, ex) => self.visit_unary_expr(&op, &ex),
+            ExprKind::Variable(id) => self.visit_var_expr(&id),
         }
     }
 
-    fn visit_assign_expr(&mut self, id: &Token, right: &Box<ExprKind>) -> ExprResult {
+    fn visit_assign_expr(&mut self, id: &Token, right: &Box<Expr>) -> ExprResult {
         let value = self.evaluate(right)?;
         if let Some(distance) = self.locals.get(id) {
             self.environment
@@ -174,12 +174,7 @@ impl Interpreter {
         Ok(value)
     }
 
-    fn visit_binary_expr(
-        &mut self,
-        left: &Box<ExprKind>,
-        op: &Token,
-        right: &Box<ExprKind>,
-    ) -> ExprResult {
+    fn visit_binary_expr(&mut self, left: &Box<Expr>, op: &Token, right: &Box<Expr>) -> ExprResult {
         let Value::Literal(left) = self.evaluate(&left)? else {
             return Err((
                 op,
@@ -248,11 +243,11 @@ impl Interpreter {
 
     fn visit_call_expr(
         &mut self,
-        callee: &Box<ExprKind>,
+        callee: &Box<Expr>,
         paren: &Token,
-        args: &Vec<ExprKind>,
+        args: &Vec<Expr>,
     ) -> ExprResult {
-        let ExprKind::Variable(identifier) = *callee.to_owned() else {
+        let ExprKind::Variable(identifier) = &callee.kind else {
             return Err((paren, "Not a valid function call.").into());
         };
         let mut arguments = Vec::new();
@@ -261,7 +256,7 @@ impl Interpreter {
         }
         let value = self.environment.borrow().get(&identifier)?;
         match value {
-            Value::Literal(_) => Err((&identifier, "Not a valid function call.").into()),
+            Value::Literal(_) => Err((identifier, "Not a valid function call.").into()),
             Value::Function(mut func) => match func.call(self, &arguments) {
                 Throw::Return(value) => Ok(value),
                 Throw::Error(err) => Err(err.into()), // only keep propagating up call stack if it was an *actual* error
@@ -271,9 +266,9 @@ impl Interpreter {
 
     fn visit_logical_expr(
         &mut self,
-        left: &Box<ExprKind>,
+        left: &Box<Expr>,
         op: &Token,
-        right: &Box<ExprKind>,
+        right: &Box<Expr>,
     ) -> ExprResult {
         let left = self.evaluate(&left)?;
         if op.t_type == TokenType::Or {
@@ -288,7 +283,7 @@ impl Interpreter {
         self.evaluate(right)
     }
 
-    fn visit_unary_expr(&mut self, op: &Token, ex: &Box<ExprKind>) -> ExprResult {
+    fn visit_unary_expr(&mut self, op: &Token, ex: &Box<Expr>) -> ExprResult {
         let Value::Literal(right) = self.evaluate(ex)? else {
             return Err((
                 op,
