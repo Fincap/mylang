@@ -7,3 +7,6 @@ pub use crate::callable::*;
 pub use crate::environment::*;
 pub use crate::interpreter::*;
 pub use crate::resolver::*;
+
+#[cfg(test)]
+mod tests;
