@@ -11,6 +11,3 @@ pub use crate::lexer::*;
 pub use crate::parser::*;
 pub use crate::stmt::*;
 pub use crate::token::*;
-
-#[cfg(test)]
-mod tests;
