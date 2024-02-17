@@ -10,7 +10,7 @@ type StmtResult = Result<(), Throw>;
 pub struct Interpreter {
     pub globals: Rc<RefCell<Environment>>,
     pub environment: Rc<RefCell<Environment>>,
-    locals: HashMap<Token, usize>,
+    locals: HashMap<Expr, usize>,
 }
 impl Interpreter {
     pub fn new() -> Self {
@@ -147,22 +147,22 @@ impl Interpreter {
         self.visit_expr(ex)
     }
 
-    fn visit_expr(&mut self, ex: &Expr) -> ExprResult {
-        match &ex.kind {
-            ExprKind::Assign(id, right) => self.visit_assign_expr(&id, &right),
-            ExprKind::Binary(left, op, right) => self.visit_binary_expr(&left, &op, &right),
-            ExprKind::Call(callee, paren, args) => self.visit_call_expr(&callee, &paren, &args),
-            ExprKind::Grouping(ex) => self.evaluate(&ex),
+    fn visit_expr(&mut self, expr: &Expr) -> ExprResult {
+        match &expr.kind {
+            ExprKind::Assign(id, right) => self.visit_assign_expr(expr, id, right),
+            ExprKind::Binary(left, op, right) => self.visit_binary_expr(left, op, right),
+            ExprKind::Call(callee, paren, args) => self.visit_call_expr(callee, paren, args),
+            ExprKind::Grouping(ex) => self.evaluate(ex),
             ExprKind::Literal(lit) => Ok(lit.to_owned().into()),
-            ExprKind::Logical(left, op, right) => self.visit_logical_expr(&left, &op, &right),
-            ExprKind::Unary(op, ex) => self.visit_unary_expr(&op, &ex),
-            ExprKind::Variable(id) => self.visit_var_expr(&id),
+            ExprKind::Logical(left, op, right) => self.visit_logical_expr(left, op, right),
+            ExprKind::Unary(op, right) => self.visit_unary_expr(op, right),
+            ExprKind::Variable(id) => self.visit_var_expr(expr, &id),
         }
     }
 
-    fn visit_assign_expr(&mut self, id: &Token, right: &Box<Expr>) -> ExprResult {
+    fn visit_assign_expr(&mut self, ex: &Expr, id: &Token, right: &Box<Expr>) -> ExprResult {
         let value = self.evaluate(right)?;
-        if let Some(distance) = self.locals.get(id) {
+        if let Some(distance) = self.locals.get(ex) {
             self.environment
                 .borrow_mut()
                 .assign_at(id, value.to_owned(), *distance)?;
@@ -283,8 +283,8 @@ impl Interpreter {
         self.evaluate(right)
     }
 
-    fn visit_unary_expr(&mut self, op: &Token, ex: &Box<Expr>) -> ExprResult {
-        let Value::Literal(right) = self.evaluate(ex)? else {
+    fn visit_unary_expr(&mut self, op: &Token, right: &Box<Expr>) -> ExprResult {
+        let Value::Literal(right) = self.evaluate(right)? else {
             return Err((
                 op,
                 "Unary operand must be numeric. Did you forget to call the function?",
@@ -305,16 +305,16 @@ impl Interpreter {
         }
     }
 
-    fn visit_var_expr(&mut self, id: &Token) -> ExprResult {
-        self.look_up_variable(id)
+    fn visit_var_expr(&mut self, ex: &Expr, id: &Token) -> ExprResult {
+        self.look_up_variable(ex, id)
     }
 
-    pub fn resolve(&mut self, id: &Token, depth: usize) {
-        self.locals.insert(id.to_owned(), depth);
+    pub fn resolve(&mut self, ex: &Expr, depth: usize) {
+        self.locals.insert(ex.to_owned(), depth);
     }
 
-    fn look_up_variable(&self, id: &Token) -> ExprResult {
-        match self.locals.get(id) {
+    fn look_up_variable(&self, ex: &Expr, id: &Token) -> ExprResult {
+        match self.locals.get(ex) {
             Some(distance) => Ok(self.environment.borrow_mut().get_at(&id, *distance)?),
             None => Ok(self.globals.borrow_mut().get(&id)?),
         }

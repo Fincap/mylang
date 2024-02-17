@@ -133,20 +133,20 @@ impl<'a> Resolver<'a> {
 
     fn resolve_expr(&mut self, expr: &Expr) -> ResolverResult {
         match &expr.kind {
-            ExprKind::Assign(id, ex) => self.visit_assign_expr(&id, &ex),
-            ExprKind::Binary(left, _, right) => self.visit_binary_expr(&left, &right),
-            ExprKind::Call(callee, _, args) => self.visit_call_expr(&callee, &args),
-            ExprKind::Grouping(ex) => self.resolve_expr(&ex),
+            ExprKind::Assign(id, ex) => self.visit_assign_expr(expr, id, ex),
+            ExprKind::Binary(left, _, right) => self.visit_binary_expr(left, right),
+            ExprKind::Call(callee, _, args) => self.visit_call_expr(callee, args),
+            ExprKind::Grouping(ex) => self.resolve_expr(ex),
             ExprKind::Literal(_) => Ok(()),
-            ExprKind::Logical(left, _, right) => self.visit_binary_expr(&left, &right),
-            ExprKind::Unary(_, right) => self.resolve_expr(&right),
-            ExprKind::Variable(id) => self.visit_var_expr(&id),
+            ExprKind::Logical(left, _, right) => self.visit_binary_expr(left, right),
+            ExprKind::Unary(_, right) => self.resolve_expr(right),
+            ExprKind::Variable(id) => self.visit_var_expr(expr, id),
         }
     }
 
-    fn visit_assign_expr(&mut self, id: &Token, expr: &Box<Expr>) -> ResolverResult {
+    fn visit_assign_expr(&mut self, ex: &Expr, id: &Token, expr: &Box<Expr>) -> ResolverResult {
         self.resolve_expr(expr)?;
-        self.resolve_local(id);
+        self.resolve_local(ex, id);
         Ok(())
     }
 
@@ -164,7 +164,7 @@ impl<'a> Resolver<'a> {
         Ok(())
     }
 
-    fn visit_var_expr(&mut self, id: &Token) -> ResolverResult {
+    fn visit_var_expr(&mut self, ex: &Expr, id: &Token) -> ResolverResult {
         if let Some(initialized) = self.scopes.last_mut().and_then(|s| s.get(&id.lexeme)) {
             if !initialized {
                 parser_error((id, "Can't read local variable in its own initializer.").into());
@@ -172,18 +172,18 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        self.resolve_local(id);
+        self.resolve_local(ex, id);
         Ok(())
     }
 
-    fn resolve_local(&mut self, id: &Token) {
+    fn resolve_local(&mut self, ex: &Expr, id: &Token) {
         for i in (0..self.scopes.len()).rev() {
             if self
                 .scopes
                 .get(i)
                 .is_some_and(|s| s.contains_key(&id.lexeme))
             {
-                self.interpreter.resolve(id, self.scopes.len() - 1 - i);
+                self.interpreter.resolve(ex, self.scopes.len() - 1 - i);
             }
         }
     }
