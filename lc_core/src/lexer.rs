@@ -125,6 +125,9 @@ impl Scanner {
                     }
                 } else if self.match_next('*') {
                     while !self.is_at_end() {
+                        if self.peek() == '\n' {
+                            self.line += 1;
+                        }
                         if self.advance() == '*' && self.peek() == '/' {
                             self.advance();
                             break;
