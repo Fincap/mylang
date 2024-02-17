@@ -12,12 +12,12 @@ fn assert_lexer_tokens(source: &'static str, output: Vec<TokenType>, len: usize)
 }
 
 #[test]
-fn test_empty() {
+fn scanner_empty() {
     assert_lexer_tokens("", vec![EOF], 1);
 }
 
 #[test]
-fn test_keywords() {
+fn scanner_keywords() {
     assert_lexer_tokens(
         "and class else false fn for if let null or 
         print return super this true while;",
@@ -30,7 +30,7 @@ fn test_keywords() {
 }
 
 #[test]
-fn test_tokens() {
+fn scanner_tokens() {
     assert_lexer_tokens(
         "(){}{{},.;-+/!<>*)=",
         vec![
@@ -65,7 +65,7 @@ fn test_tokens() {
 }
 
 #[test]
-fn test_comments() {
+fn scanner_comments() {
     assert_lexer_tokens(
         "let x = 0; // comment begins; x++;",
         vec![Let, Identifier, Equal, Number(0.0), Semicolon, EOF],
@@ -101,7 +101,7 @@ fn test_comments() {
 }
 
 #[test]
-fn test_literals() {
+fn scanner_literals() {
     assert_lexer_tokens(
         "x = 13 = \"string\"\"another string\";3.14159",
         vec![
@@ -120,7 +120,7 @@ fn test_literals() {
 }
 
 #[test]
-fn test_line_numbers() {
+fn scanner_line_numbers() {
     let source = "6, 7;
     newline,
     
@@ -150,7 +150,7 @@ fn test_line_numbers() {
 }
 
 #[test]
-fn test_unterminated_string() {
+fn scanner_unterminated_string() {
     assert_lexer_tokens(
         "\"terminated\"identifer",
         vec![String("terminated".into()), Identifier, EOF],
@@ -166,7 +166,7 @@ fn test_unterminated_string() {
 }
 
 #[test]
-fn test_identifiers() {
+fn scanner_identifiers() {
     assert_lexer_tokens(
         "valid; _alsoValid; 12ident; id_valid6",
         vec![
@@ -185,7 +185,7 @@ fn test_identifiers() {
 }
 
 #[test]
-fn test_invalid() {
+fn scanner_invalid() {
     assert_lexer_tokens(
         "@test;$let?;256%8'ident'~\"#lc@email.au\"",
         vec![
