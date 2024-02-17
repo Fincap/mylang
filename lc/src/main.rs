@@ -15,10 +15,10 @@ fn run(input: String, context: &mut Interpreter) -> Result<()> {
     let tokens = scanner.scan_tokens();
     let mut parser = Parser::new(tokens);
     let statements = parser.parse();
-    dbg!(&statements);
+    //dbg!(&statements);
     let mut resolver = Resolver::new(context);
     resolver.resolve(&statements)?;
-    dbg!(&resolver);
+    //dbg!(&resolver);
     if resolver.had_error() {
         return Err(anyhow!("Failed to resolve variables"));
     };
