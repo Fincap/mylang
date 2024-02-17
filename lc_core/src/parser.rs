@@ -149,13 +149,17 @@ impl Parser {
 
         let mut body = self.statement()?;
         if let Some(increment) = increment {
-            body = Stmt::Block(vec![body, Stmt::Expression(increment)]);
+            match &mut body {
+                Stmt::Block(body) => {
+                    body.push(Stmt::Expression(increment));
+                }
+                _ => body = Stmt::Block(vec![body, Stmt::Expression(increment)]),
+            }
         }
         body = Stmt::new_while(condition, body);
         if let Some(initializer) = initializer {
             body = Stmt::Block(vec![initializer, body]);
         }
-
         Ok(body)
     }
 
