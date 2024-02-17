@@ -48,8 +48,11 @@ impl Scanner {
             self.scan_token()
         }
 
-        self.tokens
-            .push(Token::new(TokenType::EOF, String::new(), self.line - 1));
+        self.tokens.push(Token::new(
+            TokenType::EOF,
+            String::new(),
+            self.tokens.last().map_or(1, |last| last.line),
+        ));
         self.tokens.to_owned()
     }
 
