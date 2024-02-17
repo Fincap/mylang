@@ -3,38 +3,38 @@ use crate::token::Token;
 pub const LIMIT_FN_ARGS: usize = 255;
 
 #[derive(Clone, Debug)]
-pub enum Expr {
+pub enum ExprKind {
     /// (`identifier`, `initializer`)
-    Assign(Token, Box<Expr>),
+    Assign(Token, Box<ExprKind>),
     /// (`left`, `op`, `right`)
-    Binary(Box<Expr>, Token, Box<Expr>),
+    Binary(Box<ExprKind>, Token, Box<ExprKind>),
     /// (`callee`, `paren`, `args`)
-    Call(Box<Expr>, Token, Vec<Expr>),
+    Call(Box<ExprKind>, Token, Vec<ExprKind>),
     /// (`expression`)
-    Grouping(Box<Expr>),
+    Grouping(Box<ExprKind>),
     /// (`literal`)
     Literal(Literal),
     /// (`left`, `op`, `right`)
-    Logical(Box<Expr>, Token, Box<Expr>),
+    Logical(Box<ExprKind>, Token, Box<ExprKind>),
     /// (`op`, `right`)
-    Unary(Token, Box<Expr>),
+    Unary(Token, Box<ExprKind>),
     /// (`identifier`)
     Variable(Token),
 }
-impl Expr {
-    pub fn assign(var: Token, ex: Expr) -> Self {
+impl ExprKind {
+    pub fn assign(var: Token, ex: ExprKind) -> Self {
         Self::Assign(var, Box::new(ex))
     }
 
-    pub fn binary(left: Expr, op: Token, right: Expr) -> Self {
+    pub fn binary(left: ExprKind, op: Token, right: ExprKind) -> Self {
         Self::Binary(Box::new(left), op, Box::new(right))
     }
 
-    pub fn call(callee: Expr, paren: Token, args: Vec<Expr>) -> Self {
+    pub fn call(callee: ExprKind, paren: Token, args: Vec<ExprKind>) -> Self {
         Self::Call(Box::new(callee), paren, args)
     }
 
-    pub fn grouping(ex: Expr) -> Self {
+    pub fn grouping(ex: ExprKind) -> Self {
         Self::Grouping(Box::new(ex))
     }
 
@@ -54,11 +54,11 @@ impl Expr {
         Self::Literal(Literal::Null)
     }
 
-    pub fn logical(left: Expr, op: Token, right: Expr) -> Self {
+    pub fn logical(left: ExprKind, op: Token, right: ExprKind) -> Self {
         Self::Logical(Box::new(left), op, Box::new(right))
     }
 
-    pub fn unary(op: Token, ex: Expr) -> Self {
+    pub fn unary(op: Token, ex: ExprKind) -> Self {
         Self::Unary(op, Box::new(ex))
     }
 

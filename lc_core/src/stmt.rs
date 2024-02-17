@@ -1,26 +1,26 @@
-use crate::{expr::Expr, token::Token};
+use crate::{expr::ExprKind, token::Token};
 
 #[derive(Clone, Debug)]
 pub enum Stmt {
     /// (`statements`)
     Block(Vec<Stmt>),
     /// (`expression`)
-    Expression(Expr),
+    Expression(ExprKind),
     /// (`identifier`, `params`, `body`)
     Function(Token, Vec<Token>, Vec<Stmt>),
     /// (`condition`, `then`, `else`)
-    If(Expr, Box<Stmt>, Option<Box<Stmt>>),
+    If(ExprKind, Box<Stmt>, Option<Box<Stmt>>),
     /// (`expression`)
-    Print(Expr),
+    Print(ExprKind),
     /// (`expression`)
-    Return(Expr),
+    Return(ExprKind),
     /// (`identifier`, `initializer`)
-    Let(Token, Expr),
+    Let(Token, ExprKind),
     /// (`condition`, `body`)
-    While(Expr, Box<Stmt>),
+    While(ExprKind, Box<Stmt>),
 }
 impl Stmt {
-    pub fn new_if(ex: Expr, st_then: Stmt, st_else: Option<Stmt>) -> Self {
+    pub fn new_if(ex: ExprKind, st_then: Stmt, st_else: Option<Stmt>) -> Self {
         let o_else = match st_else {
             Some(stmt) => Some(Box::new(stmt)),
             None => None,
@@ -28,7 +28,7 @@ impl Stmt {
         Self::If(ex, Box::new(st_then), o_else)
     }
 
-    pub fn new_while(ex: Expr, stmt: Stmt) -> Self {
+    pub fn new_while(ex: ExprKind, stmt: Stmt) -> Self {
         Self::While(ex, Box::new(stmt))
     }
 }

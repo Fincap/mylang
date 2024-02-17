@@ -1,11 +1,11 @@
 use crate::{
     error::parser_error,
-    expr::{Expr, LIMIT_FN_ARGS},
+    expr::{ExprKind, LIMIT_FN_ARGS},
     stmt::Stmt,
     token::{Token, TokenError, TokenType, TokenType::*},
 };
 
-type ExprResult = Result<Expr, TokenError>;
+type ExprResult = Result<ExprKind, TokenError>;
 type StmtResult = Result<Stmt, TokenError>;
 
 pub struct Parser {
@@ -80,7 +80,7 @@ impl Parser {
         let value = if !self.check(&Semicolon) {
             self.expression()?
         } else {
-            Expr::literal_null()
+            ExprKind::literal_null()
         };
         self.consume(Semicolon, "Expected ';' after return value.")?;
         Ok(Stmt::Return(value))
@@ -132,7 +132,7 @@ impl Parser {
         let condition = if !self.check(&Semicolon) {
             self.expression()?
         } else {
-            Expr::literal_bool(true)
+            ExprKind::literal_bool(true)
         };
         self.consume(Semicolon, "Expected ';' after loop condition.")?;
 
@@ -158,7 +158,7 @@ impl Parser {
     fn var_declaration(&mut self) -> StmtResult {
         self.advance();
         let name = self.consume(Identifier, "Expected variable name.")?;
-        let mut initializer = Expr::literal_null();
+        let mut initializer = ExprKind::literal_null();
         if self.match_next(vec![Equal]) {
             initializer = self.expression()?;
         }
@@ -208,8 +208,8 @@ impl Parser {
             let equals = self.previous();
             let value = self.assignment()?;
 
-            if let Expr::Variable(token) = ex {
-                return Ok(Expr::assign(token, value));
+            if let ExprKind::Variable(token) = ex {
+                return Ok(ExprKind::assign(token, value));
             }
             // Report error but don't throw because parser isn't in a confused state
             parser_error((&equals, "Invalid assignment target.").into());
@@ -231,9 +231,9 @@ impl Parser {
                 _ => unreachable!(),
             };
 
-            let right = Expr::binary(ex.to_owned(), op_arithmetic, right);
-            if let Expr::Variable(token) = ex {
-                return Ok(Expr::assign(token, right));
+            let right = ExprKind::binary(ex.to_owned(), op_arithmetic, right);
+            if let ExprKind::Variable(token) = ex {
+                return Ok(ExprKind::assign(token, right));
             }
 
             parser_error((&op_assign, "Invalid assignment target.").into());
@@ -246,7 +246,7 @@ impl Parser {
         while self.match_next(vec![Or]) {
             let op = self.previous();
             let right = self.logic_and()?;
-            ex = Expr::logical(ex, op, right);
+            ex = ExprKind::logical(ex, op, right);
         }
         Ok(ex)
     }
@@ -256,7 +256,7 @@ impl Parser {
         while self.match_next(vec![And]) {
             let op = self.previous();
             let right = self.equality()?;
-            ex = Expr::logical(ex, op, right);
+            ex = ExprKind::logical(ex, op, right);
         }
         Ok(ex)
     }
@@ -266,7 +266,7 @@ impl Parser {
         while self.match_next(vec![BangEqual, EqualEqual]) {
             let op = self.previous();
             let right = self.comparison()?;
-            ex = Expr::binary(ex, op, right);
+            ex = ExprKind::binary(ex, op, right);
         }
         Ok(ex)
     }
@@ -276,7 +276,7 @@ impl Parser {
         while self.match_next(vec![Greater, GreaterEqual, Less, LessEqual]) {
             let op = self.previous();
             let right = self.term()?;
-            ex = Expr::binary(ex, op, right);
+            ex = ExprKind::binary(ex, op, right);
         }
         Ok(ex)
     }
@@ -286,7 +286,7 @@ impl Parser {
         while self.match_next(vec![Minus, Plus]) {
             let op = self.previous();
             let right = self.factor()?;
-            ex = Expr::binary(ex, op, right);
+            ex = ExprKind::binary(ex, op, right);
         }
         Ok(ex)
     }
@@ -296,7 +296,7 @@ impl Parser {
         while self.match_next(vec![Slash, Star]) {
             let op = self.previous();
             let right = self.unary()?;
-            ex = Expr::binary(ex, op, right);
+            ex = ExprKind::binary(ex, op, right);
         }
         Ok(ex)
     }
@@ -305,7 +305,7 @@ impl Parser {
         if self.match_next(vec![Bang, Minus]) {
             let op = self.previous();
             let ex = self.unary()?;
-            return Ok(Expr::unary(op, ex));
+            return Ok(ExprKind::unary(op, ex));
         }
         self.inc_dec()
     }
@@ -320,13 +320,13 @@ impl Parser {
                 MinusMinus => Minus,
                 _ => unreachable!(),
             };
-            let right = Expr::binary(
+            let right = ExprKind::binary(
                 ex.to_owned(),
                 op_expanded.to_owned(),
-                Expr::literal_number(1.0),
+                ExprKind::literal_number(1.0),
             );
-            if let Expr::Variable(token) = ex {
-                return Ok(Expr::assign(token, right));
+            if let ExprKind::Variable(token) = ex {
+                return Ok(ExprKind::assign(token, right));
             }
             parser_error((&op_expanded, "Invalid increment/decrement target.").into());
         }
@@ -345,7 +345,7 @@ impl Parser {
         Ok(ex)
     }
 
-    fn finish_call(&mut self, ex: &Expr) -> ExprResult {
+    fn finish_call(&mut self, ex: &ExprKind) -> ExprResult {
         let mut arguments = Vec::new();
         if !self.check(&RightParen) {
             loop {
@@ -365,7 +365,7 @@ impl Parser {
             }
         }
         let paren = self.consume(RightParen, "Expected ')' after arguments.")?;
-        Ok(Expr::call(ex.to_owned(), paren, arguments))
+        Ok(ExprKind::call(ex.to_owned(), paren, arguments))
     }
 
     fn primary(&mut self) -> ExprResult {
@@ -373,33 +373,33 @@ impl Parser {
         match token.t_type {
             False => {
                 self.advance();
-                Ok(Expr::literal_bool(false))
+                Ok(ExprKind::literal_bool(false))
             }
             True => {
                 self.advance();
-                Ok(Expr::literal_bool(true))
+                Ok(ExprKind::literal_bool(true))
             }
             Null => {
                 self.advance();
-                Ok(Expr::literal_null())
+                Ok(ExprKind::literal_null())
             }
             Number(num) => {
                 self.advance();
-                Ok(Expr::literal_number(num))
+                Ok(ExprKind::literal_number(num))
             }
             String(str) => {
                 self.advance();
-                Ok(Expr::literal_string(str))
+                Ok(ExprKind::literal_string(str))
             }
             LeftParen => {
                 self.advance();
                 let ex = self.expression()?;
                 self.consume(RightParen, "Expected ')' after expression.")?;
-                Ok(Expr::grouping(ex))
+                Ok(ExprKind::grouping(ex))
             }
             Identifier => {
                 self.advance();
-                Ok(Expr::var(token))
+                Ok(ExprKind::var(token))
             }
             BangEqual | EqualEqual | Greater | GreaterEqual | Less | LessEqual | Plus | Slash
             | Star => {
