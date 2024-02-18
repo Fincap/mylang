@@ -18,7 +18,6 @@ fn closure_scope() -> Result<()> {
     }";
     let mut output: Vec<u8> = Vec::new();
     execute_sample(source, &mut output)?;
-    dbg!(&output);
     let expect = "\
 global
 global
@@ -45,7 +44,6 @@ fn block_scope() -> Result<()> {
     ";
     let mut output: Vec<u8> = Vec::new();
     execute_sample(source, &mut output)?;
-    dbg!(&output);
     let expect = "\
 first
 second
@@ -68,7 +66,6 @@ fn mixed_scope() -> Result<()> {
     ";
     let mut output: Vec<u8> = Vec::new();
     execute_sample(source, &mut output)?;
-    dbg!(&output);
     let expect = "\
 outsideinside
 "
@@ -89,7 +86,6 @@ fn while_loop() -> Result<()> {
     ";
     let mut output: Vec<u8> = Vec::new();
     execute_sample(source, &mut output)?;
-    dbg!(&output);
     let expect = "\
 0
 1
@@ -128,7 +124,6 @@ fn shadowing() -> Result<()> {
     ";
     let mut output: Vec<u8> = Vec::new();
     execute_sample(source, &mut output)?;
-    dbg!(&output);
     let expect = "\
 inner a
 outer bc
@@ -155,7 +150,6 @@ fn for_loop() -> Result<()> {
     ";
     let mut output: Vec<u8> = Vec::new();
     execute_sample(source, &mut output)?;
-    dbg!(&output);
     let expect = "\
 0
 1
@@ -179,7 +173,6 @@ fn redefine_var() -> Result<()> {
     ";
     let mut output: Vec<u8> = Vec::new();
     execute_sample(source, &mut output)?;
-    dbg!(&output);
     let expect = "\
 before
 after
@@ -199,7 +192,6 @@ fn evaluate_ver_expr() -> Result<()> {
     ";
     let mut output: Vec<u8> = Vec::new();
     execute_sample(source, &mut output)?;
-    dbg!(&output);
     let expect = "\
 3
 "
@@ -221,7 +213,6 @@ fn single_recursion() -> Result<()> {
     ";
     let mut output: Vec<u8> = Vec::new();
     execute_sample(source, &mut output)?;
-    dbg!(&output);
     let expect = "\
 5
 4
@@ -255,7 +246,6 @@ fn mutual_recursion() -> Result<()> {
     ";
     let mut output: Vec<u8> = Vec::new();
     execute_sample(source, &mut output)?;
-    dbg!(&output);
     let expect = "\
 true
 false
@@ -276,7 +266,6 @@ fn undefined_variable() {
     ";
     let mut output: Vec<u8> = Vec::new();
     execute_sample(source, &mut output).unwrap();
-    dbg!(&output);
 }
 
 #[test]
@@ -287,7 +276,6 @@ fn self_initializer() {
     ";
     let mut output: Vec<u8> = Vec::new();
     let _ = execute_sample(source, &mut output).unwrap();
-    dbg!(&output);
 }
 
 #[test]
@@ -298,7 +286,6 @@ fn top_level_return() {
     ";
     let mut output: Vec<u8> = Vec::new();
     let _ = execute_sample(source, &mut output).unwrap();
-    dbg!(&output);
 }
 
 #[test]
@@ -310,7 +297,6 @@ fn uncallable_identifers_string() {
     ";
     let mut output: Vec<u8> = Vec::new();
     let _ = execute_sample(source, &mut output).unwrap();
-    dbg!(&output);
 }
 
 #[test]
@@ -322,7 +308,6 @@ fn uncallable_identifers_number() {
     ";
     let mut output: Vec<u8> = Vec::new();
     let _ = execute_sample(source, &mut output).unwrap();
-    dbg!(&output);
 }
 
 #[test]
@@ -333,7 +318,6 @@ fn uncallable_identifers_bool() {
     ";
     let mut output: Vec<u8> = Vec::new();
     let _ = execute_sample(source, &mut output).unwrap();
-    dbg!(&output);
 }
 
 #[test]
@@ -344,7 +328,6 @@ fn uncallable_identifers_null() {
     ";
     let mut output: Vec<u8> = Vec::new();
     let _ = execute_sample(source, &mut output).unwrap();
-    dbg!(&output);
 }
 
 #[test]
@@ -358,7 +341,6 @@ fn use_keyword_as_identifier() {
     ";
     let mut output: Vec<u8> = Vec::new();
     let _ = execute_sample(source, &mut output).unwrap();
-    dbg!(&output);
 }
 
 #[test]
@@ -372,7 +354,6 @@ fn use_token_as_identifier() {
     ";
     let mut output: Vec<u8> = Vec::new();
     let _ = execute_sample(source, &mut output).unwrap();
-    dbg!(&output);
 }
 
 #[test]
@@ -383,7 +364,6 @@ fn invalid_binary_ops() {
     ";
     let mut output: Vec<u8> = Vec::new();
     let _ = execute_sample(source, &mut output).unwrap();
-    dbg!(&output);
 }
 
 #[test]
@@ -394,7 +374,6 @@ fn invalid_unary_op() {
     ";
     let mut output: Vec<u8> = Vec::new();
     let _ = execute_sample(source, &mut output).unwrap();
-    dbg!(&output);
 }
 
 #[test]
@@ -406,5 +385,4 @@ fn var_decl_as_if_body() {
     ";
     let mut output: Vec<u8> = Vec::new();
     let _ = execute_sample(source, &mut output).unwrap();
-    dbg!(&output);
 }

@@ -15,5 +15,7 @@ pub fn execute_sample(source: &str, output: &mut Vec<u8>) -> Result<()> {
     if resolver.had_error() {
         return Err(anyhow!("Failed to resolve variables"));
     };
-    context.interpret(statements)
+    let res = context.interpret(statements);
+    dbg!(String::from_utf8_lossy(output));
+    res
 }
