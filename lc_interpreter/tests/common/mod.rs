@@ -7,7 +7,7 @@ pub fn execute_sample(source: &str, output: &mut Vec<u8>) -> Result<()> {
     let mut scanner = Scanner::new(source.to_string());
     let tokens = scanner.scan_tokens();
     let mut parser = Parser::new(tokens);
-    let statements = parser.parse();
+    let statements = parser.parse()?;
     dbg!(&statements);
     let mut resolver = Resolver::new(&mut context);
     resolver.resolve(&statements)?;

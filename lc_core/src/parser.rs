@@ -15,20 +15,28 @@ type StmtResult = Result<Stmt, TokenError>;
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
+    last_err: Option<TokenError>,
 }
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
-        Self { tokens, current: 0 }
+        Self {
+            tokens,
+            current: 0,
+            last_err: None,
+        }
     }
 
-    pub fn parse(&mut self) -> Vec<Stmt> {
+    pub fn parse(&mut self) -> Result<Vec<Stmt>, TokenError> {
         let mut statements = Vec::new();
         while !self.is_at_end() {
             if let Some(statement) = self.declaration() {
                 statements.push(statement);
             }
         }
-        statements
+        if let Some(last_err) = &self.last_err {
+            return Err(last_err.clone());
+        }
+        Ok(statements)
     }
 
     fn declaration(&mut self) -> Option<Stmt> {
@@ -42,7 +50,8 @@ impl Parser {
             Ok(stmt) => Some(stmt),
             Err(e) => {
                 self.synchronize();
-                parser_error(e);
+                parser_error(e.clone());
+                self.last_err = Some(e);
                 None
             }
         }

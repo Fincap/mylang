@@ -14,7 +14,7 @@ fn run(input: String, context: &mut Interpreter) -> Result<()> {
     let mut scanner = Scanner::new(input);
     let tokens = scanner.scan_tokens();
     let mut parser = Parser::new(tokens);
-    let statements = parser.parse();
+    let statements = parser.parse()?;
     //dbg!(&statements);
     let mut resolver = Resolver::new(context);
     resolver.resolve(&statements)?;
