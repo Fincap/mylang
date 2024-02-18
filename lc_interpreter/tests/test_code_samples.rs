@@ -104,6 +104,49 @@ fn while_loop() -> Result<()> {
 }
 
 #[test]
+fn shadowing() -> Result<()> {
+    let source = "\
+    let a = \"global a\";
+    let b = \"global b\";
+    let c = \"global c\";
+    {
+        let a = \"outer a\";
+        let b = \"outer b\";
+        {
+            let a = \"inner a\";
+            print a;
+            print b;
+            print c;
+        }
+        print a;
+        print b;
+        print c;
+    }
+    print a;
+    print b;
+    print c;
+    ";
+    let mut output: Vec<u8> = Vec::new();
+    execute_sample(source, &mut output)?;
+    dbg!(&output);
+    let expect = "\
+inner a
+outer bc
+global c
+outer a
+outer b
+global c
+global a
+global b
+global c
+"
+    .as_bytes()
+    .to_vec();
+    assert_eq!(output, expect);
+    Ok(())
+}
+
+#[test]
 fn for_loop() -> Result<()> {
     let source = "\
     for (let x = 0; x < 5; x++) {
