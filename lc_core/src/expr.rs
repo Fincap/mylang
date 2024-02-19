@@ -13,7 +13,7 @@ pub enum ExprKind {
     /// (`identifier`, `initializer`)
     Assign(Ident, Box<Expr>),
     /// (`left`, `op`, `right`)
-    Binary(Box<Expr>, Token, Box<Expr>),
+    Binary(Box<Expr>, BinaryOp, Box<Expr>),
     /// (`callee`, `paren`, `args`)
     Call(Box<Expr>, Token, Vec<Expr>),
     /// (`expression`)
@@ -47,15 +47,67 @@ impl Ident {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum BinaryOp {
+    Equal,
+    NotEqual,
+    Greater,
+    GreaterEqual,
+    Less,
+    LessEqual,
+    Plus,
+    Minus,
+    Multiply,
+    Divide,
+}
+impl From<TokenKind> for BinaryOp {
+    fn from(value: TokenKind) -> Self {
+        match value {
+            TokenKind::EqualEqual => Self::Equal,
+            TokenKind::BangEqual => Self::NotEqual,
+            TokenKind::Greater => Self::Greater,
+            TokenKind::GreaterEqual => Self::GreaterEqual,
+            TokenKind::Less => Self::Less,
+            TokenKind::LessEqual => Self::LessEqual,
+            TokenKind::Plus => Self::Plus,
+            TokenKind::Minus => Self::Minus,
+            TokenKind::Star => Self::Multiply,
+            TokenKind::Slash => Self::Divide,
+            _ => unreachable!(),
+        }
+    }
+}
+impl From<Token> for BinaryOp {
+    fn from(value: Token) -> Self {
+        Self::from(value.kind)
+    }
+}
+impl BinaryOp {
+    pub fn as_str(&self) -> &str {
+        match self {
+            BinaryOp::Equal => "==",
+            BinaryOp::NotEqual => "!=",
+            BinaryOp::Greater => ">",
+            BinaryOp::GreaterEqual => ">=",
+            BinaryOp::Less => "<",
+            BinaryOp::LessEqual => "<=",
+            BinaryOp::Plus => "+",
+            BinaryOp::Minus => "-",
+            BinaryOp::Multiply => "*",
+            BinaryOp::Divide => "/",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum UnaryOp {
-    Neg,
+    Negative,
     Not,
 }
 impl From<TokenKind> for UnaryOp {
     fn from(value: TokenKind) -> Self {
         match value {
             TokenKind::Bang => Self::Not,
-            TokenKind::Minus => Self::Neg,
+            TokenKind::Minus => Self::Negative,
             _ => unreachable!(),
         }
     }
@@ -68,7 +120,7 @@ impl From<Token> for UnaryOp {
 impl UnaryOp {
     pub fn as_str(&self) -> &str {
         match self {
-            UnaryOp::Neg => "-",
+            UnaryOp::Negative => "-",
             UnaryOp::Not => "!",
         }
     }
@@ -104,7 +156,10 @@ impl Expr {
 
     pub fn binary(left: Expr, op: Token, right: Expr) -> Self {
         let span = left.span.to(right.span);
-        Self::new(ExprKind::Binary(Box::new(left), op, Box::new(right)), span)
+        Self::new(
+            ExprKind::Binary(Box::new(left), op.into(), Box::new(right)),
+            span,
+        )
     }
 
     pub fn call(callee: Expr, paren: Token, args: Vec<Expr>) -> Self {

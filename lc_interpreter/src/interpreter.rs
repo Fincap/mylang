@@ -167,70 +167,66 @@ impl<'a> Interpreter<'a> {
         Ok(value)
     }
 
-    fn visit_binary_expr(&mut self, left: &Expr, op: &Token, right: &Expr) -> ExprResult {
+    fn visit_binary_expr(&mut self, left: &Expr, op: &BinaryOp, right: &Expr) -> ExprResult {
+        let span = left.span.to(right.span);
         let Value::Literal(left) = self.evaluate(left)? else {
             return Err((
-                op.span,
+                span,
                 "Operands must be two numbers or two strings. Did you forget to call the function?",
             )
                 .into());
         };
         let Value::Literal(right) = self.evaluate(right)? else {
             return Err((
-                op.span,
+                span,
                 "Operands must be two numbers or two strings. Did you forget to call the function?",
             )
                 .into());
         };
-        match op.kind {
-            TokenKind::Minus => {
-                let (left, right) = self.get_number_ops(&left, op, &right)?;
+        match op {
+            BinaryOp::Minus => {
+                let (left, right) = self.get_number_ops(&left, span, &right)?;
                 Ok(Literal::Number(left - right).into())
             }
-            TokenKind::Slash => {
-                let (left, right) = self.get_number_ops(&left, op, &right)?;
+            BinaryOp::Divide => {
+                let (left, right) = self.get_number_ops(&left, span, &right)?;
                 Ok(Literal::Number(left / right).into())
             }
-            TokenKind::Star => {
-                let (left, right) = self.get_number_ops(&left, op, &right)?;
+            BinaryOp::Multiply => {
+                let (left, right) = self.get_number_ops(&left, span, &right)?;
                 Ok(Literal::Number(left * right).into())
             }
-            TokenKind::Plus => match left {
+            BinaryOp::Plus => match left {
                 Literal::Number(_) => {
-                    let (left, right) = self.get_number_ops(&left, op, &right)?;
+                    let (left, right) = self.get_number_ops(&left, span, &right)?;
                     Ok(Literal::Number(left + right).into())
                 }
                 Literal::String(str) => {
                     let Literal::String(right) = right else {
-                        return Err((op.span, "Cannot concatenate non-string value.").into());
+                        return Err((span, "Cannot concatenate non-string value.").into());
                     };
                     Ok(Literal::String(str.to_owned() + &right).into())
                 }
-                _ => Err((op.span, "Operands must be two numbers or two strings.").into()),
+                _ => Err((span, "Operands must be two numbers or two strings.").into()),
             },
-            TokenKind::Greater => {
-                let (left, right) = self.get_number_ops(&left, op, &right)?;
+            BinaryOp::Greater => {
+                let (left, right) = self.get_number_ops(&left, span, &right)?;
                 Ok(Literal::Bool(left > right).into())
             }
-            TokenKind::GreaterEqual => {
-                let (left, right) = self.get_number_ops(&left, op, &right)?;
+            BinaryOp::GreaterEqual => {
+                let (left, right) = self.get_number_ops(&left, span, &right)?;
                 Ok(Literal::Bool(left >= right).into())
             }
-            TokenKind::Less => {
-                let (left, right) = self.get_number_ops(&left, op, &right)?;
+            BinaryOp::Less => {
+                let (left, right) = self.get_number_ops(&left, span, &right)?;
                 Ok(Literal::Bool(left < right).into())
             }
-            TokenKind::LessEqual => {
-                let (left, right) = self.get_number_ops(&left, op, &right)?;
+            BinaryOp::LessEqual => {
+                let (left, right) = self.get_number_ops(&left, span, &right)?;
                 Ok(Literal::Bool(left <= right).into())
             }
-            TokenKind::BangEqual => Ok(Literal::Bool(left != right).into()),
-            TokenKind::EqualEqual => Ok(Literal::Bool(left == right).into()),
-            _ => Err((
-                op.span,
-                "Interpreter data corruption, binary expression has invalid operator",
-            )
-                .into()),
+            BinaryOp::NotEqual => Ok(Literal::Bool(left != right).into()),
+            BinaryOp::Equal => Ok(Literal::Bool(left == right).into()),
         }
     }
 
@@ -273,7 +269,7 @@ impl<'a> Interpreter<'a> {
                 .into());
         };
         match op {
-            UnaryOp::Neg => match right {
+            UnaryOp::Negative => match right {
                 Literal::Number(num) => Ok(Literal::Number(-num).into()),
                 _ => Err((ex.span, "Unary operand must be numeric.").into()),
             },
@@ -299,14 +295,14 @@ impl<'a> Interpreter<'a> {
     fn get_number_ops(
         &self,
         left: &Literal,
-        op: &Token,
+        span: Span,
         right: &Literal,
     ) -> Result<(f64, f64), SpannedError> {
         let Literal::Number(left) = *left else {
-            return Err((op, "Left operand must be a number.").into());
+            return Err((span, "Left operand must be a number.").into());
         };
         let Literal::Number(right) = *right else {
-            return Err((op, "Right operand must be a number.").into());
+            return Err((span, "Right operand must be a number.").into());
         };
         Ok((left, right))
     }
