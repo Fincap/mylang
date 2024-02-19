@@ -39,6 +39,7 @@ impl Parser {
         let stmt = match self.peek().kind {
             Let => self.var_declaration(),
             Fn => self.fn_declaration(),
+            Class => self.class_declaration(),
             _ => self.statement(),
         };
         // Handle errors at statement-level
@@ -210,6 +211,17 @@ impl Parser {
             return Err((&self.peek(), "Incomplete function body.").into());
         };
         Ok(Stmt::Function(Ident::from_token(name), parameters, body))
+    }
+
+    fn class_declaration(&mut self) -> StmtResult {
+        let name = self.consume(Identifier, "Expected class name.")?;
+        self.consume(LeftBrace, "Expected '{' before class body.")?;
+        let mut methods = Vec::new();
+        while !self.check(&RightBrace) && !self.is_at_end() {
+            methods.push(self.fn_declaration()?)
+        }
+        self.consume(RightBrace, "Expected '}' after class body.")?;
+        Ok(Stmt::Class(Ident::from_token(name), methods))
     }
 
     fn expression(&mut self) -> ExprResult {

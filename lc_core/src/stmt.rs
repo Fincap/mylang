@@ -4,6 +4,8 @@ use crate::{Expr, Ident};
 pub enum Stmt {
     /// (`statements`)
     Block(Vec<Stmt>),
+    /// (`identifer`, `methods`)
+    Class(Ident, Vec<Stmt>),
     /// (`expression`)
     Expression(Expr),
     /// (`identifier`, `params`, `body`)

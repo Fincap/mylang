@@ -5,6 +5,7 @@ program         ->  declaration* EOF ;
 
 declaration     ->  letDecl 
                     | fnDecl
+                    | classDecl
                     | statement ;
 
 statement       ->  exprStmt 
@@ -33,7 +34,9 @@ letDecl         ->  "let" IDENTIFIER ( "=" expression )? ";" ;
 
 fnDecl          ->  "fn" function ;
 function        ->  IDENTIFIER "(" parameters? ")" block ;
-parameters      -> IDENTIFIER ( "," IDENTIFIER )* ;
+parameters      ->  IDENTIFIER ( "," IDENTIFIER )* ;
+
+classDecl       ->  "class" IDENTIFIER "{" function* "}" ;
 
 ---
 Expression grammar, creating order of precedence (lowest-to-highest) and associativity

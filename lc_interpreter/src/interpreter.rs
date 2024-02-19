@@ -51,6 +51,7 @@ impl<'a> Interpreter<'a> {
     fn visit_stmt(&mut self, stmt: &Stmt) -> StmtResult {
         match stmt {
             Stmt::Block(statements) => self.visit_block_stmt(statements),
+            Stmt::Class(id, methods) => self.visit_class_stmt(id, methods),
             Stmt::Expression(ex) => self.visit_expr_stmt(ex),
             Stmt::Function(name, params, body) => self.visit_fn_stmt(name, params, body),
             Stmt::If(condition, st_then, st_else) => {
@@ -83,6 +84,12 @@ impl<'a> Interpreter<'a> {
         self.execute_block(statements, &Environment::new())
     }
 
+    fn visit_class_stmt(&mut self, id: &Ident, methods: &Vec<Stmt>) -> StmtResult {
+        self.environment.define(id, Value::Literal(Literal::Null));
+        //let class = Stmt::Class((), ())
+        Ok(())
+    }
+
     fn visit_expr_stmt(&mut self, ex: &Expr) -> StmtResult {
         match self.evaluate(ex) {
             Ok(_) => Ok(()),
@@ -92,8 +99,7 @@ impl<'a> Interpreter<'a> {
 
     fn visit_fn_stmt(&mut self, name: &Ident, params: &Vec<Ident>, body: &Vec<Stmt>) -> StmtResult {
         let function = Function::new(name, params, body, &self.environment.top());
-        self.environment
-            .define(name.symbol.to_owned(), function.into());
+        self.environment.define(name, function.into());
         Ok(())
     }
 
@@ -128,7 +134,7 @@ impl<'a> Interpreter<'a> {
 
     fn visit_let_stmt(&mut self, id: &Ident, initializer: &Expr) -> StmtResult {
         let value = self.evaluate(initializer)?;
-        self.environment.define(id.symbol.to_owned(), value);
+        self.environment.define(id, value);
         Ok(())
     }
 

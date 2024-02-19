@@ -26,8 +26,11 @@ impl EnvironmentStack {
         self.stack.pop();
     }
 
-    pub fn define(&mut self, name: String, value: Value) {
-        self.stack.last_mut().unwrap().define(name, value);
+    pub fn define(&mut self, name: &Ident, value: Value) {
+        self.stack
+            .last_mut()
+            .unwrap()
+            .define(name.symbol.to_owned(), value);
     }
 
     pub fn get(&self, name: &Ident) -> Result<Value, SpannedError> {

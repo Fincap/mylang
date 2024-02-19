@@ -47,6 +47,7 @@ impl<'a, 'b> Resolver<'a, 'b> {
     fn resolve_stmt(&mut self, stmt: &Stmt) -> ResolverResult {
         match stmt {
             Stmt::Block(statements) => self.visit_block_stmt(statements)?,
+            Stmt::Class(id, methods) => self.visit_class_stmt(id, methods)?,
             Stmt::Expression(ex) => self.resolve_expr(ex)?,
             Stmt::Function(id, params, body) => {
                 self.visit_function_stmt(id, params, body, FunctionKind::Function)?
@@ -66,6 +67,12 @@ impl<'a, 'b> Resolver<'a, 'b> {
         self.begin_scope();
         self.resolve_statements(statements)?;
         self.end_scope();
+        Ok(())
+    }
+
+    fn visit_class_stmt(&mut self, id: &Ident, _: &Vec<Stmt>) -> ResolverResult {
+        self.declare(id)?;
+        self.define(id);
         Ok(())
     }
 
