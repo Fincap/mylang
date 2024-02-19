@@ -46,7 +46,7 @@ impl<'a, 'b> Resolver<'a, 'b> {
 
     fn resolve_stmt(&mut self, stmt: &Stmt) -> ResolverResult {
         match stmt {
-            Stmt::Block(ex) => self.visit_block_stmt(ex)?,
+            Stmt::Block(statements) => self.visit_block_stmt(statements)?,
             Stmt::Expression(ex) => self.resolve_expr(&ex)?,
             Stmt::Function(id, params, body) => {
                 self.visit_function_stmt(id, params, body, FunctionKind::Function)?
@@ -184,6 +184,7 @@ impl<'a, 'b> Resolver<'a, 'b> {
                 .is_some_and(|s| s.contains_key(&id.lexeme))
             {
                 self.interpreter.resolve(ex, self.scopes.len() - 1 - i);
+                return;
             }
         }
     }
