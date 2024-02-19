@@ -275,7 +275,7 @@ fn self_initializer() {
 let a = a;
     ";
     let mut output: Vec<u8> = Vec::new();
-    let _ = execute_sample(source, &mut output).unwrap();
+    execute_sample(source, &mut output).unwrap();
 }
 
 #[test]
@@ -285,7 +285,7 @@ fn top_level_return() {
 return;
     ";
     let mut output: Vec<u8> = Vec::new();
-    let _ = execute_sample(source, &mut output).unwrap();
+    execute_sample(source, &mut output).unwrap();
 }
 
 #[test]
@@ -296,7 +296,7 @@ let x = \"not_a_function\"();
 print x;
     ";
     let mut output: Vec<u8> = Vec::new();
-    let _ = execute_sample(source, &mut output).unwrap();
+    execute_sample(source, &mut output).unwrap();
 }
 
 #[test]
@@ -307,7 +307,7 @@ let x = 14+0.001();
 print x
     ";
     let mut output: Vec<u8> = Vec::new();
-    let _ = execute_sample(source, &mut output).unwrap();
+    execute_sample(source, &mut output).unwrap();
 }
 
 #[test]
@@ -317,7 +317,7 @@ fn uncallable_identifers_bool() {
 let x = false();
     ";
     let mut output: Vec<u8> = Vec::new();
-    let _ = execute_sample(source, &mut output).unwrap();
+    execute_sample(source, &mut output).unwrap();
 }
 
 #[test]
@@ -327,7 +327,7 @@ fn uncallable_identifers_null() {
 let x = null();
     ";
     let mut output: Vec<u8> = Vec::new();
-    let _ = execute_sample(source, &mut output).unwrap();
+    execute_sample(source, &mut output).unwrap();
 }
 
 #[test]
@@ -340,7 +340,7 @@ fn let() {
 let();
     ";
     let mut output: Vec<u8> = Vec::new();
-    let _ = execute_sample(source, &mut output).unwrap();
+    execute_sample(source, &mut output).unwrap();
 }
 
 #[test]
@@ -353,7 +353,7 @@ fn *() {
 *();
     ";
     let mut output: Vec<u8> = Vec::new();
-    let _ = execute_sample(source, &mut output).unwrap();
+    execute_sample(source, &mut output).unwrap();
 }
 
 #[test]
@@ -363,7 +363,7 @@ fn invalid_binary_ops() {
 let a = + 5;
     ";
     let mut output: Vec<u8> = Vec::new();
-    let _ = execute_sample(source, &mut output).unwrap();
+    execute_sample(source, &mut output).unwrap();
 }
 
 #[test]
@@ -373,7 +373,7 @@ fn invalid_unary_op() {
 let !a = -!5;
     ";
     let mut output: Vec<u8> = Vec::new();
-    let _ = execute_sample(source, &mut output).unwrap();
+    execute_sample(source, &mut output).unwrap();
 }
 
 #[test]
@@ -384,5 +384,5 @@ let x = 1;
 if (x == 1) var y = 2;
     ";
     let mut output: Vec<u8> = Vec::new();
-    let _ = execute_sample(source, &mut output).unwrap();
+    execute_sample(source, &mut output).unwrap();
 }

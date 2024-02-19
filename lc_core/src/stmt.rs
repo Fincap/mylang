@@ -21,11 +21,7 @@ pub enum Stmt {
 }
 impl Stmt {
     pub fn new_if(ex: Expr, st_then: Stmt, st_else: Option<Stmt>) -> Self {
-        let o_else = match st_else {
-            Some(stmt) => Some(Box::new(stmt)),
-            None => None,
-        };
-        Self::If(ex, Box::new(st_then), o_else)
+        Self::If(ex, Box::new(st_then), st_else.map(Box::new))
     }
 
     pub fn new_while(ex: Expr, stmt: Stmt) -> Self {

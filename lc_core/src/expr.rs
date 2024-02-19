@@ -115,7 +115,7 @@ impl Expr {
     }
 
     pub fn unary(op: Token, ex: Expr) -> Self {
-        Self::new(ExprKind::Unary(op.into(), Box::new(ex)))
+        Self::new(ExprKind::Unary(op, Box::new(ex)))
     }
 
     pub fn var(var: Token) -> Self {

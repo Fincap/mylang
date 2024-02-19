@@ -12,10 +12,10 @@ fn token_hash() {
     let d = Token::new(Null, "null".into(), Span::new(2));
     let e = Token::new(Null, "null ".into(), Span::new(2));
 
-    assert_eq!(t_hash(&a), t_hash(&b));
-    assert_eq!(t_hash(&a), t_hash(&c));
+    assert_eq!(t_hash(&a), t_hash(b));
+    assert_eq!(t_hash(&a), t_hash(c));
     assert_ne!(t_hash(&a), t_hash(&d));
-    assert_ne!(t_hash(&d), t_hash(&e));
+    assert_ne!(t_hash(&d), t_hash(e));
 }
 
 #[test]

@@ -29,14 +29,14 @@ impl Value {
         }
     }
 }
-impl Into<Value> for Literal {
-    fn into(self) -> Value {
-        Value::Literal(self)
+impl From<Literal> for Value {
+    fn from(value: Literal) -> Self {
+        Value::Literal(value)
     }
 }
-impl Into<Value> for Function {
-    fn into(self) -> Value {
-        Value::Function(Box::new(self))
+impl From<Function> for Value {
+    fn from(value: Function) -> Self {
+        Value::Function(Box::new(value))
     }
 }
 
@@ -72,7 +72,7 @@ impl From<(&Token, String)> for Throw {
 }
 
 pub trait Callable<'a>: DynClone + Debug {
-    fn call(&mut self, interpreter: &'a mut Interpreter, arguments: &Vec<Value>) -> Throw;
+    fn call(&mut self, interpreter: &'a mut Interpreter, arguments: &[Value]) -> Throw;
     fn arity(&self) -> usize;
     fn as_str(&self) -> String;
 }
@@ -86,7 +86,7 @@ pub struct Function {
     closure: Environment,
 }
 impl<'a> Callable<'a> for Function {
-    fn call(&mut self, interpreter: &'a mut Interpreter, arguments: &Vec<Value>) -> Throw {
+    fn call(&mut self, interpreter: &'a mut Interpreter, arguments: &[Value]) -> Throw {
         if arguments.len() != self.params.len() {
             return (
                 &self.name,
@@ -98,9 +98,9 @@ impl<'a> Callable<'a> for Function {
             )
                 .into();
         }
-        for i in 0..self.params.len() {
+        for (i, arg) in arguments.iter().enumerate().take(self.params.len()) {
             self.closure
-                .define(self.params[i].lexeme.to_owned(), arguments[i].to_owned());
+                .define(self.params[i].lexeme.to_owned(), arg.to_owned())
         }
 
         match interpreter.execute_block(&self.body, &self.closure) {
@@ -137,7 +137,7 @@ pub fn define_builtins(environment: &mut Environment) {
 #[derive(Clone, Debug)]
 pub struct LcClock;
 impl<'a> Callable<'a> for LcClock {
-    fn call(&mut self, _: &'a mut Interpreter, _: &Vec<Value>) -> Throw {
+    fn call(&mut self, _: &'a mut Interpreter, _: &[Value]) -> Throw {
         Literal::Number(
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
@@ -159,7 +159,7 @@ impl<'a> Callable<'a> for LcClock {
 #[derive(Clone, Debug)]
 pub struct LcTypeof;
 impl<'a> Callable<'a> for LcTypeof {
-    fn call(&mut self, _: &mut Interpreter, arguments: &Vec<Value>) -> Throw {
+    fn call(&mut self, _: &mut Interpreter, arguments: &[Value]) -> Throw {
         if arguments.len() != self.arity() {
             return (
                 &Token::new(TokenKind::Fn, self.as_str(), Span::new(0)),
@@ -195,7 +195,7 @@ impl<'a> Callable<'a> for LcTypeof {
 #[derive(Clone, Debug)]
 pub struct LcSleep;
 impl<'a> Callable<'a> for LcSleep {
-    fn call(&mut self, _: &'a mut Interpreter, arguments: &Vec<Value>) -> Throw {
+    fn call(&mut self, _: &'a mut Interpreter, arguments: &[Value]) -> Throw {
         if arguments.len() != self.arity() {
             return (
                 &Token::new(TokenKind::Fn, self.as_str(), Span::new(0)),

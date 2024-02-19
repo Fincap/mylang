@@ -47,17 +47,17 @@ impl<'a, 'b> Resolver<'a, 'b> {
     fn resolve_stmt(&mut self, stmt: &Stmt) -> ResolverResult {
         match stmt {
             Stmt::Block(statements) => self.visit_block_stmt(statements)?,
-            Stmt::Expression(ex) => self.resolve_expr(&ex)?,
+            Stmt::Expression(ex) => self.resolve_expr(ex)?,
             Stmt::Function(id, params, body) => {
                 self.visit_function_stmt(id, params, body, FunctionKind::Function)?
             }
             Stmt::If(condition, st_then, st_else) => {
-                self.visit_if_stmt(&condition, st_then, st_else)?
+                self.visit_if_stmt(condition, st_then, st_else)?
             }
-            Stmt::Print(ex) => self.resolve_expr(&ex)?,
-            Stmt::Return(ex) => self.visit_return_stmt(&ex)?,
-            Stmt::Let(id, initializer) => self.visit_let_stmt(id, &initializer)?,
-            Stmt::While(condition, body) => self.visit_while_stmt(&condition, body)?,
+            Stmt::Print(ex) => self.resolve_expr(ex)?,
+            Stmt::Return(ex) => self.visit_return_stmt(ex)?,
+            Stmt::Let(id, initializer) => self.visit_let_stmt(id, initializer)?,
+            Stmt::While(condition, body) => self.visit_while_stmt(condition, body)?,
         };
         Ok(())
     }
@@ -72,13 +72,13 @@ impl<'a, 'b> Resolver<'a, 'b> {
     fn visit_if_stmt(
         &mut self,
         condition: &Expr,
-        st_then: &Box<Stmt>,
+        st_then: &Stmt,
         st_else: &Option<Box<Stmt>>,
     ) -> ResolverResult {
         self.resolve_expr(condition)?;
-        self.resolve_stmt(&st_then)?;
+        self.resolve_stmt(st_then)?;
         if let Some(st_else) = st_else {
-            self.resolve_stmt(&st_else)?;
+            self.resolve_stmt(st_else)?;
         }
         Ok(())
     }
@@ -125,7 +125,7 @@ impl<'a, 'b> Resolver<'a, 'b> {
         Ok(())
     }
 
-    fn visit_while_stmt(&mut self, condition: &Expr, body: &Box<Stmt>) -> ResolverResult {
+    fn visit_while_stmt(&mut self, condition: &Expr, body: &Stmt) -> ResolverResult {
         self.resolve_expr(condition)?;
         self.resolve_stmt(body)?;
         Ok(())
@@ -144,19 +144,19 @@ impl<'a, 'b> Resolver<'a, 'b> {
         }
     }
 
-    fn visit_assign_expr(&mut self, ex: &Expr, id: &Token, expr: &Box<Expr>) -> ResolverResult {
+    fn visit_assign_expr(&mut self, ex: &Expr, id: &Token, expr: &Expr) -> ResolverResult {
         self.resolve_expr(expr)?;
         self.resolve_local(ex, id);
         Ok(())
     }
 
-    fn visit_binary_expr(&mut self, left: &Box<Expr>, right: &Box<Expr>) -> ResolverResult {
+    fn visit_binary_expr(&mut self, left: &Expr, right: &Expr) -> ResolverResult {
         self.resolve_expr(left)?;
         self.resolve_expr(right)?;
         Ok(())
     }
 
-    fn visit_call_expr(&mut self, callee: &Box<Expr>, args: &Vec<Expr>) -> ResolverResult {
+    fn visit_call_expr(&mut self, callee: &Expr, args: &Vec<Expr>) -> ResolverResult {
         self.resolve_expr(callee)?;
         for arg in args {
             self.resolve_expr(arg)?;

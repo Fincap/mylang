@@ -100,13 +100,13 @@ impl<'a> Interpreter<'a> {
     fn visit_if_stmt(
         &mut self,
         condition: &Expr,
-        st_then: &Box<Stmt>,
+        st_then: &Stmt,
         st_else: &Option<Box<Stmt>>,
     ) -> StmtResult {
         if self.evaluate(condition)?.is_truthy() {
-            self.execute(&st_then)?;
+            self.execute(st_then)?;
         } else if let Some(st_else) = st_else {
-            self.execute(&st_else)?;
+            self.execute(st_else)?;
         }
         Ok(())
     }
@@ -128,13 +128,13 @@ impl<'a> Interpreter<'a> {
 
     fn visit_let_stmt(&mut self, id: &Token, initializer: &Expr) -> StmtResult {
         let value = self.evaluate(initializer)?;
-        self.environment.define(id.lexeme.to_owned(), value.into());
+        self.environment.define(id.lexeme.to_owned(), value);
         Ok(())
     }
 
-    fn visit_while_stmt(&mut self, condition: &Expr, body: &Box<Stmt>) -> StmtResult {
+    fn visit_while_stmt(&mut self, condition: &Expr, body: &Stmt) -> StmtResult {
         while self.evaluate(condition)?.is_truthy() {
-            self.execute(&body)?;
+            self.execute(body)?;
         }
         Ok(())
     }
@@ -152,31 +152,30 @@ impl<'a> Interpreter<'a> {
             ExprKind::Literal(lit) => Ok(lit.to_owned().into()),
             ExprKind::Logical(left, op, right) => self.visit_logical_expr(left, op, right),
             ExprKind::Unary(op, right) => self.visit_unary_expr(op, right),
-            ExprKind::Variable(id) => self.visit_var_expr(expr, &id),
+            ExprKind::Variable(id) => self.visit_var_expr(expr, id),
         }
     }
 
-    fn visit_assign_expr(&mut self, ex: &Expr, id: &Token, right: &Box<Expr>) -> ExprResult {
+    fn visit_assign_expr(&mut self, ex: &Expr, id: &Token, right: &Expr) -> ExprResult {
         let value = self.evaluate(right)?;
         if let Some(distance) = self.locals.get(ex) {
             self.environment
                 .assign_at(id, value.to_owned(), *distance)?;
         } else {
-            self.environment
-                .global_assign(id, value.to_owned().into())?;
+            self.environment.global_assign(id, value.to_owned())?;
         }
         Ok(value)
     }
 
-    fn visit_binary_expr(&mut self, left: &Box<Expr>, op: &Token, right: &Box<Expr>) -> ExprResult {
-        let Value::Literal(left) = self.evaluate(&left)? else {
+    fn visit_binary_expr(&mut self, left: &Expr, op: &Token, right: &Expr) -> ExprResult {
+        let Value::Literal(left) = self.evaluate(left)? else {
             return Err((
                 op,
                 "Operands must be two numbers or two strings. Did you forget to call the function?",
             )
                 .into());
         };
-        let Value::Literal(right) = self.evaluate(&right)? else {
+        let Value::Literal(right) = self.evaluate(right)? else {
             return Err((
                 op,
                 "Operands must be two numbers or two strings. Did you forget to call the function?",
@@ -235,12 +234,7 @@ impl<'a> Interpreter<'a> {
         }
     }
 
-    fn visit_call_expr(
-        &mut self,
-        callee: &Box<Expr>,
-        paren: &Token,
-        args: &Vec<Expr>,
-    ) -> ExprResult {
+    fn visit_call_expr(&mut self, callee: &Expr, paren: &Token, args: &Vec<Expr>) -> ExprResult {
         let ExprKind::Variable(identifier) = &callee.kind else {
             return Err((paren, "Not a valid function call.").into());
         };
@@ -248,7 +242,7 @@ impl<'a> Interpreter<'a> {
         for arg in args {
             arguments.push(self.evaluate(arg)?);
         }
-        let value = self.environment.get(&identifier)?;
+        let value = self.environment.get(identifier)?;
         match value {
             Value::Literal(_) => Err((identifier, "Not a valid function call.").into()),
             Value::Function(mut func) => match func.call(self, &arguments) {
@@ -258,26 +252,19 @@ impl<'a> Interpreter<'a> {
         }
     }
 
-    fn visit_logical_expr(
-        &mut self,
-        left: &Box<Expr>,
-        op: &Token,
-        right: &Box<Expr>,
-    ) -> ExprResult {
-        let left = self.evaluate(&left)?;
-        if op.kind == TokenKind::Or {
-            if left.is_truthy() {
-                return Ok(left);
-            }
-        } else {
-            if !left.is_truthy() {
-                return Ok(left);
-            }
+    fn visit_logical_expr(&mut self, left: &Expr, op: &Token, right: &Expr) -> ExprResult {
+        let left = self.evaluate(left)?;
+        if op.kind == TokenKind::Or && left.is_truthy() {
+            return Ok(left);
         }
+        if !left.is_truthy() {
+            return Ok(left);
+        }
+
         self.evaluate(right)
     }
 
-    fn visit_unary_expr(&mut self, op: &Token, right: &Box<Expr>) -> ExprResult {
+    fn visit_unary_expr(&mut self, op: &Token, right: &Expr) -> ExprResult {
         let Value::Literal(right) = self.evaluate(right)? else {
             return Err((
                 op,
@@ -309,8 +296,8 @@ impl<'a> Interpreter<'a> {
 
     fn look_up_variable(&self, ex: &Expr, id: &Token) -> ExprResult {
         match self.locals.get(ex) {
-            Some(distance) => Ok(self.environment.get_at(&id, *distance)?),
-            None => Ok(self.environment.global_get(&id)?),
+            Some(distance) => Ok(self.environment.get_at(id, *distance)?),
+            None => Ok(self.environment.global_get(id)?),
         }
     }
 

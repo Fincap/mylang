@@ -103,7 +103,7 @@ fn scanner_comments() {
 #[test]
 fn scanner_literals() {
     assert_lexer_tokens(
-        "x = 13 = \"string\"\"another string\";3.14159",
+        "x = 13 = \"string\"\"another string\";3.14158",
         vec![
             Identifier,
             Equal,
@@ -112,7 +112,7 @@ fn scanner_literals() {
             String("string".into()),
             String("another string".into()),
             Semicolon,
-            Number(3.14159),
+            Number(3.14158),
             EOF,
         ],
         9,
@@ -129,8 +129,7 @@ fn scanner_line_numbers() {
     comment
     
     */
-    return"
-        .into();
+    return";
     let output = vec![
         Number(6.0),
         Comma,
@@ -142,7 +141,7 @@ fn scanner_line_numbers() {
         Return,
         EOF,
     ];
-    let expected_lines = vec![1, 1, 1, 1, 2, 2, 4, 9, 9];
+    let expected_lines = [1, 1, 1, 1, 2, 2, 4, 9, 9];
     let tokens = assert_lexer_tokens(source, output, 9);
     for (t, l) in tokens.iter().zip(expected_lines.iter()) {
         assert_eq!(t.span.line, *l);

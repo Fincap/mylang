@@ -7,7 +7,7 @@ use crate::Token;
 pub type SpanMessage = (usize, String);
 pub type TranslationResult<T> = (T, TranslationErrors);
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct TranslationErrors {
     issues: Vec<SpanMessage>,
 }

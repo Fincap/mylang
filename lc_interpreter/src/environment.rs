@@ -52,10 +52,8 @@ impl EnvironmentStack {
 
     pub fn assign(&mut self, name: &Token, value: Value) -> Result<(), SpannedError> {
         for env in self.stack.iter_mut().rev() {
-            if env.contains(name) {
-                if env.assign(name, value.to_owned()).is_ok() {
-                    return Ok(());
-                }
+            if env.contains(name) && env.assign(name, value.to_owned()).is_ok() {
+                return Ok(());
             }
         }
         Err((name, format!("Undefined variable '{}'", name.lexeme)).into())
@@ -76,7 +74,7 @@ impl EnvironmentStack {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct Environment {
     values: HashMap<String, Value>,
 }
