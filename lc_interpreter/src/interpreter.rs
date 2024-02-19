@@ -114,9 +114,7 @@ impl<'a> Interpreter<'a> {
     fn visit_print_stmt(&mut self, ex: &Expr) -> StmtResult {
         match self.evaluate(ex) {
             Ok(lit) => {
-                self.output
-                    .write_fmt(format_args!("{}\n", lit.as_str()))
-                    .unwrap();
+                writeln!(self.output, "{}", lit.as_str()).unwrap();
                 Ok(())
             }
             Err(err) => Err(err),
