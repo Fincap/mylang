@@ -2,7 +2,7 @@ use lc_core::*;
 use TokenKind::*;
 
 fn assert_lexer_tokens(source: &'static str, output: Vec<TokenKind>, len: usize) -> Vec<Token> {
-    let tokens = Scanner::new(source.to_string()).scan_tokens();
+    let (tokens, _) = Scanner::new(source.to_string()).scan_tokens();
     dbg!(&tokens);
     assert_eq!(tokens.len(), len);
     for (t, o) in tokens.iter().zip(output.iter()) {

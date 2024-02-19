@@ -32,11 +32,11 @@ impl<'a> Interpreter<'a> {
         }
     }
 
-    pub fn interpret(&mut self, statements: Vec<Stmt>) -> anyhow::Result<()> {
+    pub fn interpret(&mut self, statements: Vec<Stmt>) -> Result<(), RuntimeError> {
         for statement in &statements {
             if let Err(e) = self.execute(statement) {
                 if let Throw::Error(e) = e {
-                    return runtime_error(e);
+                    return Err(e.into());
                 }
                 break;
             }

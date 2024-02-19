@@ -1,6 +1,6 @@
 use crate::{
-    error::lexer_error,
     token::{Token, TokenKind},
+    SpanMessage, TranslationResult,
 };
 use phf::*;
 
@@ -29,6 +29,7 @@ pub struct Scanner {
     start: usize,
     current: usize,
     line: usize,
+    errors: Vec<SpanMessage>,
 }
 impl Scanner {
     pub fn new(source: String) -> Self {
@@ -38,10 +39,11 @@ impl Scanner {
             start: 0,
             current: 0,
             line: 1,
+            errors: Vec::new(),
         }
     }
 
-    pub fn scan_tokens(&mut self) -> Vec<Token> {
+    pub fn scan_tokens(&mut self) -> TranslationResult<Vec<Token>> {
         while !self.is_at_end() {
             // Beginning of next lexeme
             self.start = self.current;
@@ -53,7 +55,7 @@ impl Scanner {
             String::new(),
             self.tokens.last().map_or(1, |last| last.line),
         ));
-        self.tokens.to_owned()
+        (self.tokens.to_owned(), self.errors.clone().into())
     }
 
     fn scan_token(&mut self) {
@@ -145,7 +147,7 @@ impl Scanner {
             '"' => self.scan_string(),
             '0'..='9' => self.scan_number(),
             'a'..='z' | 'A'..='Z' | '_' => self.scan_identifier(),
-            _ => lexer_error(self.line, format!("Unexpected character {}", c)),
+            _ => self.report_error(self.line, format!("Unexpected character {}", c)),
         }
     }
 
@@ -157,7 +159,7 @@ impl Scanner {
             self.advance();
         }
         if self.is_at_end() {
-            lexer_error(self.line, String::from("Unterminated string"));
+            self.report_error(self.line, String::from("Unterminated string"));
             return;
         }
         self.advance(); // consume the closing "
@@ -243,5 +245,9 @@ impl Scanner {
 
     fn is_alphanumeric(c: char) -> bool {
         c.is_ascii_alphanumeric() || c == '_'
+    }
+
+    fn report_error(&mut self, line: usize, message: String) {
+        self.errors.push((line, message));
     }
 }

@@ -18,7 +18,7 @@ pub struct Resolver<'a, 'b> {
     interpreter: &'a mut Interpreter<'b>,
     scopes: Vec<Scope>,
     current_function: FunctionKind,
-    had_error: bool,
+    errors: Vec<TokenError>,
 }
 impl<'a, 'b> Resolver<'a, 'b> {
     pub fn new(interpreter: &'a mut Interpreter<'b>) -> Self {
@@ -26,19 +26,19 @@ impl<'a, 'b> Resolver<'a, 'b> {
             interpreter,
             scopes: Vec::new(),
             current_function: FunctionKind::None,
-            had_error: false,
+            errors: Vec::new(),
         }
     }
 
-    pub fn had_error(&self) -> bool {
-        self.had_error
+    pub fn resolve(&mut self, statements: &Vec<Stmt>) -> TranslationResult<()> {
+        let _ = self.resolve_statements(statements);
+        ((), self.errors.clone().into())
     }
 
-    pub fn resolve(&mut self, statements: &Vec<Stmt>) -> ResolverResult {
+    fn resolve_statements(&mut self, statements: &Vec<Stmt>) -> ResolverResult {
         for stmt in statements {
             if let Err(e) = self.resolve_stmt(stmt) {
-                parser_error(e);
-                self.had_error = true;
+                self.report_error(e);
             }
         }
         Ok(())
@@ -64,7 +64,7 @@ impl<'a, 'b> Resolver<'a, 'b> {
 
     fn visit_block_stmt(&mut self, statements: &Vec<Stmt>) -> ResolverResult {
         self.begin_scope();
-        self.resolve(statements)?;
+        self.resolve_statements(statements)?;
         self.end_scope();
         Ok(())
     }
@@ -112,7 +112,7 @@ impl<'a, 'b> Resolver<'a, 'b> {
             self.declare(param)?;
             self.define(param);
         }
-        self.resolve(body)?;
+        self.resolve_statements(body)?;
         self.end_scope();
         self.current_function = enclosing;
         Ok(())
@@ -167,8 +167,7 @@ impl<'a, 'b> Resolver<'a, 'b> {
     fn visit_var_expr(&mut self, ex: &Expr, id: &Token) -> ResolverResult {
         if let Some(initialized) = self.scopes.last_mut().and_then(|s| s.get(&id.lexeme)) {
             if !initialized {
-                parser_error((id, "Can't read local variable in its own initializer.").into());
-                self.had_error = true;
+                self.report_error((id, "Can't read local variable in its own initializer.").into());
             }
         }
 
@@ -212,5 +211,9 @@ impl<'a, 'b> Resolver<'a, 'b> {
 
     fn end_scope(&mut self) {
         self.scopes.pop();
+    }
+
+    fn report_error(&mut self, e: TokenError) {
+        self.errors.push(e)
     }
 }

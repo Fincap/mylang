@@ -1,12 +1,11 @@
 use crate::{
-    error::parser_error,
     expr::{ExprKind, LIMIT_FN_ARGS},
     stmt::Stmt,
     token::{
         Token, TokenError,
         TokenKind::{self, *},
     },
-    Expr,
+    Expr, TranslationResult,
 };
 
 type ExprResult = Result<Expr, TokenError>;
@@ -15,28 +14,25 @@ type StmtResult = Result<Stmt, TokenError>;
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
-    last_err: Option<TokenError>,
+    errors: Vec<TokenError>,
 }
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
         Self {
             tokens,
             current: 0,
-            last_err: None,
+            errors: Vec::new(),
         }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Stmt>, TokenError> {
+    pub fn parse(&mut self) -> TranslationResult<Vec<Stmt>> {
         let mut statements = Vec::new();
         while !self.is_at_end() {
             if let Some(statement) = self.declaration() {
                 statements.push(statement);
             }
         }
-        if let Some(last_err) = &self.last_err {
-            return Err(last_err.clone());
-        }
-        Ok(statements)
+        (statements, self.errors.clone().into())
     }
 
     fn declaration(&mut self) -> Option<Stmt> {
@@ -50,8 +46,7 @@ impl Parser {
             Ok(stmt) => Some(stmt),
             Err(e) => {
                 self.synchronize();
-                parser_error(e.clone());
-                self.last_err = Some(e);
+                self.report_error(e);
                 None
             }
         }
@@ -191,7 +186,7 @@ impl Parser {
         if !self.check(&RightParen) {
             loop {
                 if parameters.len() >= LIMIT_FN_ARGS {
-                    parser_error(
+                    self.report_error(
                         (
                             &self.peek(),
                             format!("Can't have more than {} parameters.", LIMIT_FN_ARGS),
@@ -229,7 +224,7 @@ impl Parser {
                 return Ok(Expr::assign(token, value));
             }
             // Report error but don't throw because parser isn't in a confused state
-            parser_error((&equals, "Invalid assignment target.").into());
+            self.report_error((&equals, "Invalid assignment target.").into());
         }
         Ok(ex)
     }
@@ -253,7 +248,7 @@ impl Parser {
                 return Ok(Expr::assign(op, right));
             }
 
-            parser_error((&op_assign, "Invalid assignment target.").into());
+            self.report_error((&op_assign, "Invalid assignment target.").into());
         }
         Ok(ex)
     }
@@ -345,7 +340,7 @@ impl Parser {
             if let ExprKind::Variable(op) = ex.kind {
                 return Ok(Expr::assign(op, right));
             }
-            parser_error((&op_expanded, "Invalid increment/decrement target.").into());
+            self.report_error((&op_expanded, "Invalid increment/decrement target.").into());
         }
         Ok(ex)
     }
@@ -367,7 +362,7 @@ impl Parser {
         if !self.check(&RightParen) {
             loop {
                 if arguments.len() >= LIMIT_FN_ARGS {
-                    parser_error(
+                    self.report_error(
                         (
                             &self.peek(),
                             format!("Can't have more than {} arguments.", LIMIT_FN_ARGS),
@@ -490,5 +485,9 @@ impl Parser {
             }
             self.advance();
         }
+    }
+
+    fn report_error(&mut self, e: TokenError) {
+        self.errors.push(e);
     }
 }

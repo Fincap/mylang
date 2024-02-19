@@ -6,23 +6,31 @@ use std::{
     process::ExitCode,
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 
 use lc_core::*;
 use lc_interpreter::*;
 
 fn run(input: String, context: &mut Interpreter) -> Result<()> {
+    let mut issues = TranslationErrors::new();
+
+    // Lexing
     let mut scanner = Scanner::new(input);
-    let tokens = scanner.scan_tokens();
+    let (tokens, mut errs) = scanner.scan_tokens();
+    issues.merge(&mut errs);
+
+    // Parsing
     let mut parser = Parser::new(tokens);
-    let statements = parser.parse()?;
-    //dbg!(&statements);
+    let (statements, mut errs) = parser.parse();
+    issues.merge(&mut errs);
+
+    // Resolving and binding
     let mut resolver = Resolver::new(context);
-    resolver.resolve(&statements)?;
-    //dbg!(&resolver);
-    if resolver.had_error() {
-        return Err(anyhow!("Failed to resolve variables"));
-    };
+    let (_, mut errs) = resolver.resolve(&statements);
+    issues.merge(&mut errs);
+
+    // Execution
+    issues.check()?;
     context.interpret(statements)?;
     Ok(())
 }
@@ -49,7 +57,9 @@ fn run_prompt() -> Result<()> {
             // Windows: Ctrl+Z, Unix: Ctrl+D
             return Ok(());
         }
-        run(buffer, &mut context)?;
+        if let Err(e) = run(buffer, &mut context) {
+            eprint!("{}", e);
+        }
     }
 }
 
@@ -64,7 +74,7 @@ fn main() -> ExitCode {
         run_prompt()
     };
     if let Err(e) = result {
-        eprintln!("{e}");
+        eprint!("{e}");
         return ExitCode::FAILURE;
     }
     ExitCode::SUCCESS
