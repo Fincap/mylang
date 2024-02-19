@@ -3,6 +3,7 @@ use std::{
     fs::File,
     io::{self, Read, Write},
     path::Path,
+    process::ExitCode,
 };
 
 use anyhow::{anyhow, Result};
@@ -52,13 +53,19 @@ fn run_prompt() -> Result<()> {
     }
 }
 
-fn main() -> Result<()> {
+fn main() -> ExitCode {
     if env::args().len() > 2 {
-        return Err(anyhow!("Usage: mylang [script]"));
+        eprintln!("Usage: mylang [script]");
+        return ExitCode::FAILURE;
     }
-    if env::args().len() == 2 {
-        return run_file(env::args().nth(1).unwrap());
+    let result = if env::args().len() == 2 {
+        run_file(env::args().nth(1).unwrap())
+    } else {
+        run_prompt()
+    };
+    if let Err(e) = result {
+        eprintln!("{e}");
+        return ExitCode::FAILURE;
     }
-
-    run_prompt()
+    ExitCode::SUCCESS
 }
