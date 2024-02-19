@@ -5,7 +5,7 @@ use std::{
 };
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum TokenType {
+pub enum TokenKind {
     // Literals
     Identifier,
     String(String),
@@ -59,7 +59,7 @@ pub enum TokenType {
 
 #[derive(Clone, Debug)]
 pub struct Token {
-    pub t_type: TokenType,
+    pub kind: TokenKind,
     pub lexeme: String,
     pub line: usize,
 }
@@ -76,16 +76,16 @@ impl PartialEq for Token {
 }
 impl Eq for Token {}
 impl Token {
-    pub fn new(t_type: TokenType, lexeme: String, line: usize) -> Self {
+    pub fn new(t_type: TokenKind, lexeme: String, line: usize) -> Self {
         Self {
-            t_type,
+            kind: t_type,
             lexeme,
             line,
         }
     }
 
     pub fn as_str(&self) -> String {
-        format!("{} {:?}", self.lexeme, self.t_type)
+        format!("{} {:?}", self.lexeme, self.kind)
     }
 }
 

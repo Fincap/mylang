@@ -4,7 +4,7 @@ use crate::{
     stmt::Stmt,
     token::{
         Token, TokenError,
-        TokenType::{self, *},
+        TokenKind::{self, *},
     },
     Expr,
 };
@@ -40,7 +40,7 @@ impl Parser {
     }
 
     fn declaration(&mut self) -> Option<Stmt> {
-        let stmt = match self.peek().t_type {
+        let stmt = match self.peek().kind {
             Let => self.var_declaration(),
             Fn => self.fn_declaration(),
             _ => self.statement(),
@@ -58,7 +58,7 @@ impl Parser {
     }
 
     fn statement(&mut self) -> StmtResult {
-        match self.peek().t_type {
+        match self.peek().kind {
             LeftBrace => self.block(),
             Return => self.return_stmt(),
             Print => self.print_stmt(),
@@ -133,7 +133,7 @@ impl Parser {
     fn for_stmt(&mut self) -> StmtResult {
         self.advance();
         self.consume(LeftParen, "Expected '(' after 'for'.")?;
-        let initializer = match self.peek().t_type {
+        let initializer = match self.peek().kind {
             Semicolon => {
                 self.advance();
                 None
@@ -240,7 +240,7 @@ impl Parser {
             let op_assign = self.previous();
             let right = self.assignment()?;
             let mut op_arithmetic = op_assign.clone();
-            op_arithmetic.t_type = match op_assign.t_type {
+            op_arithmetic.kind = match op_assign.kind {
                 PlusEqual => Plus,
                 MinusEqual => Minus,
                 StarEqual => Star,
@@ -332,7 +332,7 @@ impl Parser {
         if self.match_next(vec![PlusPlus, MinusMinus]) {
             let op = self.previous();
             let mut op_expanded = op.clone();
-            op_expanded.t_type = match op.t_type {
+            op_expanded.kind = match op.kind {
                 PlusPlus => Plus,
                 MinusMinus => Minus,
                 _ => unreachable!(),
@@ -387,7 +387,7 @@ impl Parser {
 
     fn primary(&mut self) -> ExprResult {
         let token = self.peek();
-        match token.t_type {
+        match token.kind {
             False => {
                 self.advance();
                 Ok(Expr::literal_bool(false))
@@ -431,7 +431,7 @@ impl Parser {
         }
     }
 
-    fn match_next(&mut self, types: Vec<TokenType>) -> bool {
+    fn match_next(&mut self, types: Vec<TokenKind>) -> bool {
         for t_type in &types {
             if self.check(t_type) {
                 self.advance();
@@ -441,11 +441,11 @@ impl Parser {
         false
     }
 
-    fn check(&mut self, t_type: &TokenType) -> bool {
+    fn check(&mut self, t_type: &TokenKind) -> bool {
         if self.is_at_end() {
             false
         } else {
-            self.peek().t_type == *t_type
+            self.peek().kind == *t_type
         }
     }
 
@@ -457,7 +457,7 @@ impl Parser {
     }
 
     fn is_at_end(&self) -> bool {
-        self.peek().t_type == EOF
+        self.peek().kind == EOF
     }
 
     fn peek(&self) -> Token {
@@ -468,7 +468,7 @@ impl Parser {
         self.tokens[self.current - 1].to_owned()
     }
 
-    fn consume(&mut self, t_type: TokenType, message: &'static str) -> Result<Token, TokenError> {
+    fn consume(&mut self, t_type: TokenKind, message: &'static str) -> Result<Token, TokenError> {
         if self.check(&t_type) {
             Ok(self.advance())
         } else {
@@ -479,10 +479,10 @@ impl Parser {
     fn synchronize(&mut self) {
         self.advance();
         while !self.is_at_end() {
-            if self.previous().t_type == Semicolon {
+            if self.previous().kind == Semicolon {
                 return;
             }
-            match self.peek().t_type {
+            match self.peek().kind {
                 Class | Fn | Let | For | If | While | Print | Return => {
                     return;
                 }

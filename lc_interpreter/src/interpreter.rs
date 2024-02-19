@@ -185,20 +185,20 @@ impl<'a> Interpreter<'a> {
             )
                 .into());
         };
-        match op.t_type {
-            TokenType::Minus => {
+        match op.kind {
+            TokenKind::Minus => {
                 let (left, right) = self.get_number_ops(&left, op, &right)?;
                 Ok(Literal::Number(left - right).into())
             }
-            TokenType::Slash => {
+            TokenKind::Slash => {
                 let (left, right) = self.get_number_ops(&left, op, &right)?;
                 Ok(Literal::Number(left / right).into())
             }
-            TokenType::Star => {
+            TokenKind::Star => {
                 let (left, right) = self.get_number_ops(&left, op, &right)?;
                 Ok(Literal::Number(left * right).into())
             }
-            TokenType::Plus => match left {
+            TokenKind::Plus => match left {
                 Literal::Number(_) => {
                     let (left, right) = self.get_number_ops(&left, op, &right)?;
                     Ok(Literal::Number(left + right).into())
@@ -211,24 +211,24 @@ impl<'a> Interpreter<'a> {
                 }
                 _ => Err((op, "Operands must be two numbers or two strings.").into()),
             },
-            TokenType::Greater => {
+            TokenKind::Greater => {
                 let (left, right) = self.get_number_ops(&left, op, &right)?;
                 Ok(Literal::Bool(left > right).into())
             }
-            TokenType::GreaterEqual => {
+            TokenKind::GreaterEqual => {
                 let (left, right) = self.get_number_ops(&left, op, &right)?;
                 Ok(Literal::Bool(left >= right).into())
             }
-            TokenType::Less => {
+            TokenKind::Less => {
                 let (left, right) = self.get_number_ops(&left, op, &right)?;
                 Ok(Literal::Bool(left < right).into())
             }
-            TokenType::LessEqual => {
+            TokenKind::LessEqual => {
                 let (left, right) = self.get_number_ops(&left, op, &right)?;
                 Ok(Literal::Bool(left <= right).into())
             }
-            TokenType::BangEqual => Ok(Literal::Bool(left != right).into()),
-            TokenType::EqualEqual => Ok(Literal::Bool(left == right).into()),
+            TokenKind::BangEqual => Ok(Literal::Bool(left != right).into()),
+            TokenKind::EqualEqual => Ok(Literal::Bool(left == right).into()),
             _ => Err((
                 op,
                 "Interpreter data corruption, binary expression has invalid operator",
@@ -267,7 +267,7 @@ impl<'a> Interpreter<'a> {
         right: &Box<Expr>,
     ) -> ExprResult {
         let left = self.evaluate(&left)?;
-        if op.t_type == TokenType::Or {
+        if op.kind == TokenKind::Or {
             if left.is_truthy() {
                 return Ok(left);
             }
@@ -287,12 +287,12 @@ impl<'a> Interpreter<'a> {
             )
                 .into());
         };
-        match op.t_type {
-            TokenType::Minus => match right {
+        match op.kind {
+            TokenKind::Minus => match right {
                 Literal::Number(num) => Ok(Literal::Number(-num).into()),
                 _ => Err((op, "Unary operand must be numeric.").into()),
             },
-            TokenType::Bang => Ok(Literal::Bool(!right.is_truthy()).into()),
+            TokenKind::Bang => Ok(Literal::Bool(!right.is_truthy()).into()),
             _ => Err((
                 op,
                 "Interpreter data corruption, unary expression has invalid operator",

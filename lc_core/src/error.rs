@@ -1,4 +1,4 @@
-use crate::token::{TokenError, TokenType};
+use crate::token::{TokenError, TokenKind};
 use anyhow::anyhow;
 
 pub fn lexer_error(line: usize, message: String) {
@@ -6,7 +6,7 @@ pub fn lexer_error(line: usize, message: String) {
 }
 
 pub fn parser_error(err: TokenError) {
-    if let TokenType::EOF = err.token.t_type {
+    if let TokenKind::EOF = err.token.kind {
         report(err.token.line, " at end".to_string(), err.message);
     } else {
         report(

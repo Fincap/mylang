@@ -2,7 +2,7 @@ mod common;
 
 use crate::common::t_hash;
 use lc_core::*;
-use TokenType::*;
+use TokenKind::*;
 
 #[test]
 fn token_hash() {
