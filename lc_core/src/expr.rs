@@ -3,6 +3,7 @@ use std::mem;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::token::Token;
+use crate::TokenKind;
 
 pub const LIMIT_FN_ARGS: usize = 255;
 static EXPR_ID: AtomicUsize = AtomicUsize::new(0);
@@ -31,6 +32,28 @@ pub enum ExprKind {
 pub enum UnaryOp {
     Neg,
     Not,
+}
+impl From<TokenKind> for UnaryOp {
+    fn from(value: TokenKind) -> Self {
+        match value {
+            TokenKind::Bang => Self::Not,
+            TokenKind::Minus => Self::Neg,
+            _ => unreachable!(),
+        }
+    }
+}
+impl From<Token> for UnaryOp {
+    fn from(value: Token) -> Self {
+        Self::from(value.kind)
+    }
+}
+impl UnaryOp {
+    pub fn as_str(&self) -> &str {
+        match self {
+            UnaryOp::Neg => "-",
+            UnaryOp::Not => "!",
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -92,7 +115,7 @@ impl Expr {
     }
 
     pub fn unary(op: Token, ex: Expr) -> Self {
-        Self::new(ExprKind::Unary(op, Box::new(ex)))
+        Self::new(ExprKind::Unary(op.into(), Box::new(ex)))
     }
 
     pub fn var(var: Token) -> Self {
