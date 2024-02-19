@@ -77,6 +77,21 @@ impl From<SpannedError> for RuntimeError {
         }
     }
 }
+impl RuntimeError {
+    pub fn new(message: String) -> Self {
+        Self {
+            line: 0,
+            message: message,
+        }
+    }
+
+    pub fn with_span(message: String, span: Span) -> Self {
+        Self {
+            line: span.line,
+            message: message,
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct SpannedError {
