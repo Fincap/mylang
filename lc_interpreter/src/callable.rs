@@ -1,6 +1,7 @@
 use std::{
     fmt::Debug,
-    time::{SystemTime, UNIX_EPOCH},
+    thread,
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use dyn_clone::DynClone;
@@ -127,6 +128,12 @@ impl Function {
     }
 }
 
+pub fn define_builtins(environment: &mut Environment) {
+    environment.define("clock".into(), Value::Function(Box::new(LcClock)));
+    environment.define("typeof".into(), Value::Function(Box::new(LcTypeof)));
+    environment.define("sleep".into(), Value::Function(Box::new(LcSleep)));
+}
+
 #[derive(Clone, Debug)]
 pub struct LcClock;
 impl<'a> Callable<'a> for LcClock {
@@ -182,5 +189,52 @@ impl<'a> Callable<'a> for LcTypeof {
 
     fn as_str(&self) -> String {
         "<fn typeof>".to_string()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct LcSleep;
+impl<'a> Callable<'a> for LcSleep {
+    fn call(&mut self, _: &'a mut Interpreter, arguments: &Vec<Value>) -> Throw {
+        if arguments.len() != self.arity() {
+            return (
+                &Token::new(TokenType::Fn, self.as_str(), 0),
+                format!(
+                    "Function expected {} arguments but was given {}",
+                    self.arity(),
+                    arguments.len()
+                ),
+            )
+                .into();
+        }
+        let duration = match &arguments[0] {
+            Value::Literal(lit) => match lit {
+                Literal::Number(num) => Duration::from_secs_f64(num / 1000.0),
+                _ => {
+                    return (
+                        &Token::new(TokenType::Fn, self.as_str(), 0),
+                        "sleep duration must be a number in representing milliseconds",
+                    )
+                        .into()
+                }
+            },
+            Value::Function(_) => {
+                return (
+                    &Token::new(TokenType::Fn, self.as_str(), 0),
+                    "sleep duration must be a number in representing milliseconds",
+                )
+                    .into()
+            }
+        };
+        thread::sleep(duration);
+        Literal::Null.into()
+    }
+
+    fn arity(&self) -> usize {
+        1
+    }
+
+    fn as_str(&self) -> String {
+        "<fn sleep>".to_string()
     }
 }

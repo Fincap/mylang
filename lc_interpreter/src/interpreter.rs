@@ -23,8 +23,7 @@ impl<'a> fmt::Debug for Interpreter<'a> {
 impl<'a> Interpreter<'a> {
     pub fn new(output: &'a mut dyn io::Write) -> Self {
         let mut globals = Environment::new();
-        globals.define("clock".into(), Value::Function(Box::new(LcClock)));
-        globals.define("typeof".into(), Value::Function(Box::new(LcTypeof)));
+        define_builtins(&mut globals);
         let environment = EnvironmentStack::new(globals);
         Self {
             environment,
