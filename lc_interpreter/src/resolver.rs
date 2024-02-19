@@ -85,11 +85,7 @@ impl<'a, 'b> Resolver<'a, 'b> {
 
     fn visit_return_stmt(&mut self, expr: &Expr) -> ResolverResult {
         if self.current_function == FunctionKind::None {
-            Err((
-                &Token::new(TokenKind::Return, "return".to_string(), Span::default()),
-                "Can't return from top-level code",
-            )
-                .into())
+            Err((expr.span, "Can't return from top-level code").into())
         } else {
             self.resolve_expr(expr)
         }
@@ -168,7 +164,7 @@ impl<'a, 'b> Resolver<'a, 'b> {
         if let Some(initialized) = self.scopes.last_mut().and_then(|s| s.get(&id.symbol)) {
             if !initialized {
                 self.report_error(
-                    (id.span, "Can't read local variable in its own initializer.").into(),
+                    (ex.span, "Can't read local variable in its own initializer.").into(),
                 );
             }
         }

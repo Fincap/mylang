@@ -98,21 +98,20 @@ impl Expr {
     }
 
     pub fn assign(var: Ident, ex: Expr) -> Self {
-        let span = var.span;
+        let span = var.span.to(ex.span);
         Self::new(ExprKind::Assign(var, Box::new(ex)), span)
     }
 
     pub fn binary(left: Expr, op: Token, right: Expr) -> Self {
-        Self::new(
-            ExprKind::Binary(Box::new(left), op.to_owned(), Box::new(right)),
-            op.span,
-        )
+        let span = left.span.to(right.span);
+        Self::new(ExprKind::Binary(Box::new(left), op, Box::new(right)), span)
     }
 
     pub fn call(callee: Expr, paren: Token, args: Vec<Expr>) -> Self {
+        let span = callee.span.to(args.last().unwrap_or(&callee).span);
         Self::new(
             ExprKind::Call(Box::new(callee), paren.to_owned(), args),
-            paren.span,
+            span,
         )
     }
 
@@ -120,31 +119,33 @@ impl Expr {
         Self::new(ExprKind::Grouping(Box::new(ex.to_owned())), ex.span)
     }
 
-    pub fn literal_string(str: String) -> Self {
-        Self::new(ExprKind::Literal(Literal::String(str)), Span::default())
+    pub fn literal_string(str: String, span: Span) -> Self {
+        Self::new(ExprKind::Literal(Literal::String(str)), span)
     }
 
-    pub fn literal_number(num: f64) -> Self {
-        Self::new(ExprKind::Literal(Literal::Number(num)), Span::default())
+    pub fn literal_number(num: f64, span: Span) -> Self {
+        Self::new(ExprKind::Literal(Literal::Number(num)), span)
     }
 
-    pub fn literal_bool(b: bool) -> Self {
-        Self::new(ExprKind::Literal(Literal::Bool(b)), Span::default())
+    pub fn literal_bool(b: bool, span: Span) -> Self {
+        Self::new(ExprKind::Literal(Literal::Bool(b)), span)
     }
 
-    pub fn literal_null() -> Self {
-        Self::new(ExprKind::Literal(Literal::Null), Span::default())
+    pub fn literal_null(span: Span) -> Self {
+        Self::new(ExprKind::Literal(Literal::Null), span)
     }
 
     pub fn logical(left: Expr, op: Token, right: Expr) -> Self {
+        let span = left.span.to(right.span);
         Self::new(
             ExprKind::Logical(Box::new(left), op.to_owned(), Box::new(right)),
-            op.span,
+            span,
         )
     }
 
     pub fn unary(op: Token, ex: Expr) -> Self {
-        Self::new(ExprKind::Unary(op.to_owned(), Box::new(ex)), op.span)
+        let span = op.span.to(ex.span);
+        Self::new(ExprKind::Unary(op.to_owned(), Box::new(ex)), span)
     }
 
     pub fn var(var: Token) -> Self {

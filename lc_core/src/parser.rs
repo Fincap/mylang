@@ -84,11 +84,11 @@ impl Parser {
     }
 
     fn return_stmt(&mut self) -> StmtResult {
-        self.advance();
+        let token = self.advance();
         let value = if !self.check(&Semicolon) {
             self.expression()?
         } else {
-            Expr::literal_null()
+            Expr::literal_null(token.span)
         };
         self.consume(Semicolon, "Expected ';' after return value.")?;
         Ok(Stmt::Return(value))
@@ -140,7 +140,7 @@ impl Parser {
         let condition = if !self.check(&Semicolon) {
             self.expression()?
         } else {
-            Expr::literal_bool(true)
+            Expr::literal_bool(true, self.previous().span)
         };
         self.consume(Semicolon, "Expected ';' after loop condition.")?;
 
@@ -170,7 +170,7 @@ impl Parser {
     fn var_declaration(&mut self) -> StmtResult {
         self.advance();
         let name = self.consume(Identifier, "Expected variable name.")?;
-        let mut initializer = Expr::literal_null();
+        let mut initializer = Expr::literal_null(name.span);
         if self.match_next(vec![Equal]) {
             initializer = self.expression()?;
         }
@@ -337,7 +337,7 @@ impl Parser {
             let right = Expr::binary(
                 ex.to_owned(),
                 op_expanded.to_owned(),
-                Expr::literal_number(1.0),
+                Expr::literal_number(1.0, ex.span.to(op_expanded.span)),
             );
             if let ExprKind::Variable(op) = ex.kind {
                 return Ok(Expr::assign(op, right));
@@ -386,24 +386,24 @@ impl Parser {
         let token = self.peek();
         match token.kind {
             False => {
-                self.advance();
-                Ok(Expr::literal_bool(false))
+                let token = self.advance();
+                Ok(Expr::literal_bool(false, token.span))
             }
             True => {
-                self.advance();
-                Ok(Expr::literal_bool(true))
+                let token = self.advance();
+                Ok(Expr::literal_bool(true, token.span))
             }
             Null => {
-                self.advance();
-                Ok(Expr::literal_null())
+                let token = self.advance();
+                Ok(Expr::literal_null(token.span))
             }
             Number(num) => {
-                self.advance();
-                Ok(Expr::literal_number(num))
+                let token = self.advance();
+                Ok(Expr::literal_number(num, token.span))
             }
             String(str) => {
-                self.advance();
-                Ok(Expr::literal_string(str))
+                let token = self.advance();
+                Ok(Expr::literal_string(str, token.span))
             }
             LeftParen => {
                 self.advance();
