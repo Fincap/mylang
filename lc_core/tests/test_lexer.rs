@@ -145,7 +145,7 @@ fn scanner_line_numbers() {
     let expected_lines = vec![1, 1, 1, 1, 2, 2, 4, 9, 9];
     let tokens = assert_lexer_tokens(source, output, 9);
     for (t, l) in tokens.iter().zip(expected_lines.iter()) {
-        assert_eq!(t.line, *l);
+        assert_eq!(t.span.line, *l);
     }
 }
 

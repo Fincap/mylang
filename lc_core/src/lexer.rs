@@ -1,6 +1,6 @@
 use crate::{
     token::{Token, TokenKind},
-    SpanMessage, TranslationResult,
+    Span, SpanMessage, TranslationResult,
 };
 use phf::*;
 
@@ -53,7 +53,9 @@ impl Scanner {
         self.tokens.push(Token::new(
             TokenKind::EOF,
             String::new(),
-            self.tokens.last().map_or(1, |last| last.line),
+            self.tokens
+                .last()
+                .map_or(Span::new(1), |last| Span::new(last.span.line)),
         ));
         (self.tokens.to_owned(), self.errors.clone().into())
     }
@@ -236,7 +238,7 @@ impl Scanner {
     fn add_token(&mut self, p_type: TokenKind) {
         let text = &self.source[self.start..self.current];
         self.tokens
-            .push(Token::new(p_type, String::from(text), self.line));
+            .push(Token::new(p_type, String::from(text), Span::new(self.line)));
     }
 
     fn is_at_end(&self) -> bool {

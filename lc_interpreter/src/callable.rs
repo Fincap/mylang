@@ -162,7 +162,7 @@ impl<'a> Callable<'a> for LcTypeof {
     fn call(&mut self, _: &mut Interpreter, arguments: &Vec<Value>) -> Throw {
         if arguments.len() != self.arity() {
             return (
-                &Token::new(TokenKind::Fn, self.as_str(), 0),
+                &Token::new(TokenKind::Fn, self.as_str(), Span::new(0)),
                 format!(
                     "Function expected {} arguments but was given {}",
                     self.arity(),
@@ -198,7 +198,7 @@ impl<'a> Callable<'a> for LcSleep {
     fn call(&mut self, _: &'a mut Interpreter, arguments: &Vec<Value>) -> Throw {
         if arguments.len() != self.arity() {
             return (
-                &Token::new(TokenKind::Fn, self.as_str(), 0),
+                &Token::new(TokenKind::Fn, self.as_str(), Span::new(0)),
                 format!(
                     "Function expected {} arguments but was given {}",
                     self.arity(),
@@ -212,7 +212,7 @@ impl<'a> Callable<'a> for LcSleep {
                 Literal::Number(num) => Duration::from_secs_f64(num / 1000.0),
                 _ => {
                     return (
-                        &Token::new(TokenKind::Fn, self.as_str(), 0),
+                        &Token::new(TokenKind::Fn, self.as_str(), Span::new(0)),
                         "sleep duration must be a number in representing milliseconds",
                     )
                         .into()
@@ -220,7 +220,7 @@ impl<'a> Callable<'a> for LcSleep {
             },
             Value::Function(_) => {
                 return (
-                    &Token::new(TokenKind::Fn, self.as_str(), 0),
+                    &Token::new(TokenKind::Fn, self.as_str(), Span::new(0)),
                     "sleep duration must be a number in representing milliseconds",
                 )
                     .into()

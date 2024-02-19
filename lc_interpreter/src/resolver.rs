@@ -86,7 +86,7 @@ impl<'a, 'b> Resolver<'a, 'b> {
     fn visit_return_stmt(&mut self, expr: &Expr) -> ResolverResult {
         if self.current_function == FunctionKind::None {
             Err((
-                &Token::new(TokenKind::Return, "return".to_string(), 0),
+                &Token::new(TokenKind::Return, "return".to_string(), Span::new(0)),
                 "Can't return from top-level code",
             )
                 .into())

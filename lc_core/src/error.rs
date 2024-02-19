@@ -25,7 +25,7 @@ impl From<Vec<TokenError>> for TranslationErrors {
         Self {
             issues: issues
                 .iter()
-                .map(|t| (t.token.line, t.message.to_owned()))
+                .map(|t| (t.token.span.line, t.message.to_owned()))
                 .collect(),
         }
     }
@@ -71,7 +71,7 @@ impl error::Error for RuntimeError {}
 impl From<TokenError> for RuntimeError {
     fn from(value: TokenError) -> Self {
         Self {
-            line: value.token.line,
+            line: value.token.span.line,
             message: value.message,
         }
     }
