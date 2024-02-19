@@ -1,4 +1,5 @@
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
+use std::mem;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::token::Token;
@@ -6,7 +7,7 @@ use crate::token::Token;
 pub const LIMIT_FN_ARGS: usize = 255;
 static EXPR_ID: AtomicUsize = AtomicUsize::new(0);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub enum ExprKind {
     /// (`identifier`, `initializer`)
     Assign(Token, Box<Expr>),
@@ -24,6 +25,12 @@ pub enum ExprKind {
     Unary(Token, Box<Expr>),
     /// (`identifier`)
     Variable(Token),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum UnaryOp {
+    Neg,
+    Not,
 }
 
 #[derive(Clone, Debug)]
@@ -99,6 +106,16 @@ pub enum Literal {
     Number(f64),
     Bool(bool),
     Null,
+}
+impl Hash for Literal {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            Literal::Number(num) => num.to_ne_bytes().hash(state),
+            Literal::String(val) => val.hash(state),
+            Literal::Bool(val) => val.hash(state),
+            Literal::Null => mem::discriminant(self).hash(state),
+        }
+    }
 }
 impl Literal {
     pub fn as_str(&self) -> String {
