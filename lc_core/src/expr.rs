@@ -11,7 +11,7 @@ static EXPR_ID: AtomicUsize = AtomicUsize::new(0);
 #[derive(Clone, Debug, PartialEq, Hash)]
 pub enum ExprKind {
     /// (`identifier`, `initializer`)
-    Assign(Token, Box<Expr>),
+    Assign(Ident, Box<Expr>),
     /// (`left`, `op`, `right`)
     Binary(Box<Expr>, Token, Box<Expr>),
     /// (`callee`, `paren`, `args`)
@@ -25,7 +25,25 @@ pub enum ExprKind {
     /// (`op`, `right`)
     Unary(Token, Box<Expr>),
     /// (`identifier`)
-    Variable(Token),
+    Variable(Ident),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Ident {
+    pub symbol: String,
+    pub span: Span,
+}
+impl Ident {
+    pub fn new(symbol: String, span: Span) -> Self {
+        Self { symbol, span }
+    }
+
+    pub fn from_token(token: Token) -> Self {
+        Self {
+            symbol: token.lexeme,
+            span: token.span,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -79,8 +97,9 @@ impl Expr {
         Self { id, kind, span }
     }
 
-    pub fn assign(var: Token, ex: Expr) -> Self {
-        Self::new(ExprKind::Assign(var.to_owned(), Box::new(ex)), var.span)
+    pub fn assign(var: Ident, ex: Expr) -> Self {
+        let span = var.span;
+        Self::new(ExprKind::Assign(var, Box::new(ex)), span)
     }
 
     pub fn binary(left: Expr, op: Token, right: Expr) -> Self {
@@ -129,7 +148,8 @@ impl Expr {
     }
 
     pub fn var(var: Token) -> Self {
-        Self::new(ExprKind::Variable(var.to_owned()), var.span)
+        let span = var.span;
+        Self::new(ExprKind::Variable(Ident::from_token(var)), span)
     }
 }
 

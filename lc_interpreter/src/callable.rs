@@ -60,13 +60,13 @@ impl From<SpannedError> for Throw {
         Throw::Error(value)
     }
 }
-impl From<(&Token, &str)> for Throw {
-    fn from(value: (&Token, &str)) -> Self {
+impl From<(Span, &str)> for Throw {
+    fn from(value: (Span, &str)) -> Self {
         Throw::Error(SpannedError::from(value))
     }
 }
-impl From<(&Token, String)> for Throw {
-    fn from(value: (&Token, String)) -> Self {
+impl From<(Span, String)> for Throw {
+    fn from(value: (Span, String)) -> Self {
         Throw::Error(SpannedError::from(value))
     }
 }
@@ -80,8 +80,8 @@ dyn_clone::clone_trait_object!(for<'a> Callable<'a>);
 
 #[derive(Clone, Debug)]
 pub struct Function {
-    name: Token,
-    params: Vec<Token>,
+    name: Ident,
+    params: Vec<Ident>,
     body: Vec<Stmt>,
     closure: Environment,
 }
@@ -89,7 +89,7 @@ impl<'a> Callable<'a> for Function {
     fn call(&mut self, interpreter: &'a mut Interpreter, arguments: &[Value]) -> Throw {
         if arguments.len() != self.params.len() {
             return (
-                &self.name,
+                self.name.span,
                 format!(
                     "Function expected {} arguments but was given {}",
                     self.params.len(),
@@ -100,7 +100,7 @@ impl<'a> Callable<'a> for Function {
         }
         for (i, arg) in arguments.iter().enumerate().take(self.params.len()) {
             self.closure
-                .define(self.params[i].lexeme.to_owned(), arg.to_owned())
+                .define(self.params[i].symbol.to_owned(), arg.to_owned())
         }
 
         match interpreter.execute_block(&self.body, &self.closure) {
@@ -114,11 +114,11 @@ impl<'a> Callable<'a> for Function {
     }
 
     fn as_str(&self) -> String {
-        format!("<fn {}>", self.name.lexeme)
+        format!("<fn {}>", self.name.symbol)
     }
 }
 impl Function {
-    pub fn new(name: &Token, params: &Vec<Token>, body: &Vec<Stmt>, closure: &Environment) -> Self {
+    pub fn new(name: &Ident, params: &Vec<Ident>, body: &Vec<Stmt>, closure: &Environment) -> Self {
         Self {
             name: name.to_owned(),
             params: params.to_owned(),
@@ -162,7 +162,7 @@ impl<'a> Callable<'a> for LcTypeof {
     fn call(&mut self, _: &mut Interpreter, arguments: &[Value]) -> Throw {
         if arguments.len() != self.arity() {
             return (
-                &Token::new(TokenKind::Fn, self.as_str(), Span::default()),
+                Span::default(),
                 format!(
                     "Function expected {} arguments but was given {}",
                     self.arity(),
@@ -198,7 +198,7 @@ impl<'a> Callable<'a> for LcSleep {
     fn call(&mut self, _: &'a mut Interpreter, arguments: &[Value]) -> Throw {
         if arguments.len() != self.arity() {
             return (
-                &Token::new(TokenKind::Fn, self.as_str(), Span::default()),
+                Span::default(),
                 format!(
                     "Function expected {} arguments but was given {}",
                     self.arity(),
@@ -212,7 +212,7 @@ impl<'a> Callable<'a> for LcSleep {
                 Literal::Number(num) => Duration::from_secs_f64(num / 1000.0),
                 _ => {
                     return (
-                        &Token::new(TokenKind::Fn, self.as_str(), Span::default()),
+                        Span::default(),
                         "sleep duration must be a number in representing milliseconds",
                     )
                         .into()
@@ -220,7 +220,7 @@ impl<'a> Callable<'a> for LcSleep {
             },
             Value::Function(_) => {
                 return (
-                    &Token::new(TokenKind::Fn, self.as_str(), Span::default()),
+                    Span::default(),
                     "sleep duration must be a number in representing milliseconds",
                 )
                     .into()

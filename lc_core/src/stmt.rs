@@ -1,4 +1,4 @@
-use crate::{token::Token, Expr};
+use crate::{Expr, Ident};
 
 #[derive(Clone, Debug)]
 pub enum Stmt {
@@ -7,7 +7,7 @@ pub enum Stmt {
     /// (`expression`)
     Expression(Expr),
     /// (`identifier`, `params`, `body`)
-    Function(Token, Vec<Token>, Vec<Stmt>),
+    Function(Ident, Vec<Ident>, Vec<Stmt>),
     /// (`condition`, `then`, `else`)
     If(Expr, Box<Stmt>, Option<Box<Stmt>>),
     /// (`expression`)
@@ -15,7 +15,7 @@ pub enum Stmt {
     /// (`expression`)
     Return(Expr),
     /// (`identifier`, `initializer`)
-    Let(Token, Expr),
+    Let(Ident, Expr),
     /// (`condition`, `body`)
     While(Expr, Box<Stmt>),
 }

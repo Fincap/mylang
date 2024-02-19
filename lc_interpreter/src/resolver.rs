@@ -97,8 +97,8 @@ impl<'a, 'b> Resolver<'a, 'b> {
 
     fn visit_function_stmt(
         &mut self,
-        id: &Token,
-        params: &Vec<Token>,
+        id: &Ident,
+        params: &Vec<Ident>,
         body: &Vec<Stmt>,
         kind: FunctionKind,
     ) -> ResolverResult {
@@ -118,7 +118,7 @@ impl<'a, 'b> Resolver<'a, 'b> {
         Ok(())
     }
 
-    fn visit_let_stmt(&mut self, id: &Token, initializer: &Expr) -> ResolverResult {
+    fn visit_let_stmt(&mut self, id: &Ident, initializer: &Expr) -> ResolverResult {
         self.declare(id)?;
         self.resolve_expr(initializer)?;
         self.define(id);
@@ -133,7 +133,7 @@ impl<'a, 'b> Resolver<'a, 'b> {
 
     fn resolve_expr(&mut self, expr: &Expr) -> ResolverResult {
         match &expr.kind {
-            ExprKind::Assign(id, ex) => self.visit_assign_expr(expr, id, ex),
+            ExprKind::Assign(id, initializer) => self.visit_assign_expr(expr, id, initializer),
             ExprKind::Binary(left, _, right) => self.visit_binary_expr(left, right),
             ExprKind::Call(callee, _, args) => self.visit_call_expr(callee, args),
             ExprKind::Grouping(ex) => self.resolve_expr(ex),
@@ -144,8 +144,8 @@ impl<'a, 'b> Resolver<'a, 'b> {
         }
     }
 
-    fn visit_assign_expr(&mut self, ex: &Expr, id: &Token, expr: &Expr) -> ResolverResult {
-        self.resolve_expr(expr)?;
+    fn visit_assign_expr(&mut self, ex: &Expr, id: &Ident, initializer: &Expr) -> ResolverResult {
+        self.resolve_expr(initializer)?;
         self.resolve_local(ex, id);
         Ok(())
     }
@@ -164,10 +164,12 @@ impl<'a, 'b> Resolver<'a, 'b> {
         Ok(())
     }
 
-    fn visit_var_expr(&mut self, ex: &Expr, id: &Token) -> ResolverResult {
-        if let Some(initialized) = self.scopes.last_mut().and_then(|s| s.get(&id.lexeme)) {
+    fn visit_var_expr(&mut self, ex: &Expr, id: &Ident) -> ResolverResult {
+        if let Some(initialized) = self.scopes.last_mut().and_then(|s| s.get(&id.symbol)) {
             if !initialized {
-                self.report_error((id, "Can't read local variable in its own initializer.").into());
+                self.report_error(
+                    (id.span, "Can't read local variable in its own initializer.").into(),
+                );
             }
         }
 
@@ -175,12 +177,12 @@ impl<'a, 'b> Resolver<'a, 'b> {
         Ok(())
     }
 
-    fn resolve_local(&mut self, ex: &Expr, id: &Token) {
+    fn resolve_local(&mut self, ex: &Expr, id: &Ident) {
         for i in (0..self.scopes.len()).rev() {
             if self
                 .scopes
                 .get(i)
-                .is_some_and(|s| s.contains_key(&id.lexeme))
+                .is_some_and(|s| s.contains_key(&id.symbol))
             {
                 self.interpreter.resolve(ex, self.scopes.len() - 1 - i);
                 return;
@@ -188,20 +190,20 @@ impl<'a, 'b> Resolver<'a, 'b> {
         }
     }
 
-    fn declare(&mut self, id: &Token) -> ResolverResult {
+    fn declare(&mut self, id: &Ident) -> ResolverResult {
         let Some(scope) = self.scopes.last_mut() else {
             return Ok(());
         };
-        if scope.contains_key(&id.lexeme) {
-            return Err((id, "Already a variable with this name in this scope.").into());
+        if scope.contains_key(&id.symbol) {
+            return Err((id.span, "Already a variable with this name in this scope.").into());
         }
-        scope.insert(id.lexeme.to_owned(), false);
+        scope.insert(id.symbol.to_owned(), false);
         Ok(())
     }
 
-    fn define(&mut self, id: &Token) {
+    fn define(&mut self, id: &Ident) {
         if let Some(scope) = self.scopes.last_mut() {
-            scope.insert(id.lexeme.to_owned(), true);
+            scope.insert(id.symbol.to_owned(), true);
         };
     }
 

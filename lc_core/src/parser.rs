@@ -5,7 +5,7 @@ use crate::{
         Token,
         TokenKind::{self, *},
     },
-    Expr, SpannedError, TranslationResult,
+    Expr, Ident, SpannedError, TranslationResult,
 };
 
 type ExprResult = Result<Expr, SpannedError>;
@@ -175,7 +175,7 @@ impl Parser {
             initializer = self.expression()?;
         }
         self.consume(Semicolon, "Expect ';' after variable declaration")?;
-        Ok(Stmt::Let(name, initializer))
+        Ok(Stmt::Let(Ident::from_token(name), initializer))
     }
 
     fn fn_declaration(&mut self) -> StmtResult {
@@ -194,7 +194,9 @@ impl Parser {
                             .into(),
                     )
                 }
-                parameters.push(self.consume(Identifier, "Expected parameter name.")?);
+                parameters.push(Ident::from_token(
+                    self.consume(Identifier, "Expected parameter name.")?,
+                ));
                 if !self.match_next(vec![Comma]) {
                     break;
                 }
@@ -207,7 +209,7 @@ impl Parser {
         let Stmt::Block(body) = self.block()? else {
             return Err((&self.peek(), "Incomplete function body.").into());
         };
-        Ok(Stmt::Function(name, parameters, body))
+        Ok(Stmt::Function(Ident::from_token(name), parameters, body))
     }
 
     fn expression(&mut self) -> ExprResult {
@@ -220,8 +222,8 @@ impl Parser {
             let equals = self.previous();
             let value = self.assignment()?;
 
-            if let ExprKind::Variable(token) = ex.kind {
-                return Ok(Expr::assign(token, value));
+            if let ExprKind::Variable(ident) = ex.kind {
+                return Ok(Expr::assign(ident, value));
             }
             // Report error but don't throw because parser isn't in a confused state
             self.report_error((&equals, "Invalid assignment target.").into());

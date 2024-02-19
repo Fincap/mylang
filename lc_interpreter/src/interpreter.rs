@@ -90,10 +90,10 @@ impl<'a> Interpreter<'a> {
         }
     }
 
-    fn visit_fn_stmt(&mut self, name: &Token, params: &Vec<Token>, body: &Vec<Stmt>) -> StmtResult {
+    fn visit_fn_stmt(&mut self, name: &Ident, params: &Vec<Ident>, body: &Vec<Stmt>) -> StmtResult {
         let function = Function::new(name, params, body, &self.environment.top());
         self.environment
-            .define(name.lexeme.to_owned(), function.into());
+            .define(name.symbol.to_owned(), function.into());
         Ok(())
     }
 
@@ -126,9 +126,9 @@ impl<'a> Interpreter<'a> {
         Err(value.into())
     }
 
-    fn visit_let_stmt(&mut self, id: &Token, initializer: &Expr) -> StmtResult {
+    fn visit_let_stmt(&mut self, id: &Ident, initializer: &Expr) -> StmtResult {
         let value = self.evaluate(initializer)?;
-        self.environment.define(id.lexeme.to_owned(), value);
+        self.environment.define(id.symbol.to_owned(), value);
         Ok(())
     }
 
@@ -156,7 +156,7 @@ impl<'a> Interpreter<'a> {
         }
     }
 
-    fn visit_assign_expr(&mut self, ex: &Expr, id: &Token, right: &Expr) -> ExprResult {
+    fn visit_assign_expr(&mut self, ex: &Expr, id: &Ident, right: &Expr) -> ExprResult {
         let value = self.evaluate(right)?;
         if let Some(distance) = self.locals.get(ex) {
             self.environment
@@ -170,14 +170,14 @@ impl<'a> Interpreter<'a> {
     fn visit_binary_expr(&mut self, left: &Expr, op: &Token, right: &Expr) -> ExprResult {
         let Value::Literal(left) = self.evaluate(left)? else {
             return Err((
-                op,
+                op.span,
                 "Operands must be two numbers or two strings. Did you forget to call the function?",
             )
                 .into());
         };
         let Value::Literal(right) = self.evaluate(right)? else {
             return Err((
-                op,
+                op.span,
                 "Operands must be two numbers or two strings. Did you forget to call the function?",
             )
                 .into());
@@ -202,11 +202,11 @@ impl<'a> Interpreter<'a> {
                 }
                 Literal::String(str) => {
                     let Literal::String(right) = right else {
-                        return Err((op, "Cannot concatenate non-string value.").into());
+                        return Err((op.span, "Cannot concatenate non-string value.").into());
                     };
                     Ok(Literal::String(str.to_owned() + &right).into())
                 }
-                _ => Err((op, "Operands must be two numbers or two strings.").into()),
+                _ => Err((op.span, "Operands must be two numbers or two strings.").into()),
             },
             TokenKind::Greater => {
                 let (left, right) = self.get_number_ops(&left, op, &right)?;
@@ -227,7 +227,7 @@ impl<'a> Interpreter<'a> {
             TokenKind::BangEqual => Ok(Literal::Bool(left != right).into()),
             TokenKind::EqualEqual => Ok(Literal::Bool(left == right).into()),
             _ => Err((
-                op,
+                op.span,
                 "Interpreter data corruption, binary expression has invalid operator",
             )
                 .into()),
@@ -236,7 +236,7 @@ impl<'a> Interpreter<'a> {
 
     fn visit_call_expr(&mut self, callee: &Expr, paren: &Token, args: &Vec<Expr>) -> ExprResult {
         let ExprKind::Variable(identifier) = &callee.kind else {
-            return Err((paren, "Not a valid function call.").into());
+            return Err((paren.span, "Not a valid function call.").into());
         };
         let mut arguments = Vec::new();
         for arg in args {
@@ -244,7 +244,7 @@ impl<'a> Interpreter<'a> {
         }
         let value = self.environment.get(identifier)?;
         match value {
-            Value::Literal(_) => Err((identifier, "Not a valid function call.").into()),
+            Value::Literal(_) => Err((identifier.span, "Not a valid function call.").into()),
             Value::Function(mut func) => match func.call(self, &arguments) {
                 Throw::Return(value) => Ok(value),
                 Throw::Error(err) => Err(err.into()), // only keep propagating up call stack if it was an *actual* error
@@ -267,7 +267,7 @@ impl<'a> Interpreter<'a> {
     fn visit_unary_expr(&mut self, op: &Token, right: &Expr) -> ExprResult {
         let Value::Literal(right) = self.evaluate(right)? else {
             return Err((
-                op,
+                op.span,
                 "Unary operand must be numeric. Did you forget to call the function?",
             )
                 .into());
@@ -275,18 +275,18 @@ impl<'a> Interpreter<'a> {
         match op.kind {
             TokenKind::Minus => match right {
                 Literal::Number(num) => Ok(Literal::Number(-num).into()),
-                _ => Err((op, "Unary operand must be numeric.").into()),
+                _ => Err((op.span, "Unary operand must be numeric.").into()),
             },
             TokenKind::Bang => Ok(Literal::Bool(!right.is_truthy()).into()),
             _ => Err((
-                op,
+                op.span,
                 "Interpreter data corruption, unary expression has invalid operator",
             )
                 .into()),
         }
     }
 
-    fn visit_var_expr(&mut self, ex: &Expr, id: &Token) -> ExprResult {
+    fn visit_var_expr(&mut self, ex: &Expr, id: &Ident) -> ExprResult {
         self.look_up_variable(ex, id)
     }
 
@@ -294,7 +294,7 @@ impl<'a> Interpreter<'a> {
         self.locals.insert(ex.to_owned(), depth);
     }
 
-    fn look_up_variable(&self, ex: &Expr, id: &Token) -> ExprResult {
+    fn look_up_variable(&self, ex: &Expr, id: &Ident) -> ExprResult {
         match self.locals.get(ex) {
             Some(distance) => Ok(self.environment.get_at(id, *distance)?),
             None => Ok(self.environment.global_get(id)?),

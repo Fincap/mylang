@@ -30,38 +30,38 @@ impl EnvironmentStack {
         self.stack.last_mut().unwrap().define(name, value);
     }
 
-    pub fn get(&self, name: &Token) -> Result<Value, SpannedError> {
+    pub fn get(&self, name: &Ident) -> Result<Value, SpannedError> {
         for env in self.stack.iter().rev() {
             if let Ok(value) = env.get(name) {
                 return Ok(value);
             }
         }
-        Err((name, format!("Undefined variable '{}'", name.lexeme)).into())
+        Err((name.span, format!("Undefined variable '{}'", name.symbol)).into())
     }
 
-    pub fn get_at(&self, name: &Token, depth: usize) -> Result<Value, SpannedError> {
+    pub fn get_at(&self, name: &Ident, depth: usize) -> Result<Value, SpannedError> {
         self.stack
             .get(self.stack.len() - 1 - depth)
             .unwrap()
             .get(name)
     }
 
-    pub fn global_get(&self, name: &Token) -> Result<Value, SpannedError> {
+    pub fn global_get(&self, name: &Ident) -> Result<Value, SpannedError> {
         self.stack.first().unwrap().get(name)
     }
 
-    pub fn assign(&mut self, name: &Token, value: Value) -> Result<(), SpannedError> {
+    pub fn assign(&mut self, name: &Ident, value: Value) -> Result<(), SpannedError> {
         for env in self.stack.iter_mut().rev() {
             if env.contains(name) && env.assign(name, value.to_owned()).is_ok() {
                 return Ok(());
             }
         }
-        Err((name, format!("Undefined variable '{}'", name.lexeme)).into())
+        Err((name.span, format!("Undefined variable '{}'", name.symbol)).into())
     }
 
     pub fn assign_at(
         &mut self,
-        name: &Token,
+        name: &Ident,
         value: Value,
         depth: usize,
     ) -> Result<(), SpannedError> {
@@ -69,7 +69,7 @@ impl EnvironmentStack {
         self.stack.get_mut(index).unwrap().assign(name, value)
     }
 
-    pub fn global_assign(&mut self, name: &Token, value: Value) -> Result<(), SpannedError> {
+    pub fn global_assign(&mut self, name: &Ident, value: Value) -> Result<(), SpannedError> {
         self.stack.first_mut().unwrap().assign(name, value)
     }
 }
@@ -89,24 +89,24 @@ impl Environment {
         self.values.insert(name, value);
     }
 
-    pub fn get(&self, name: &Token) -> Result<Value, SpannedError> {
-        if let Some(value) = self.values.get(&name.lexeme) {
+    pub fn get(&self, name: &Ident) -> Result<Value, SpannedError> {
+        if let Some(value) = self.values.get(&name.symbol) {
             Ok(value.clone())
         } else {
-            Err((name, format!("Undefined variable '{}'", name.lexeme)).into())
+            Err((name.span, format!("Undefined variable '{}'", name.symbol)).into())
         }
     }
 
-    pub fn assign(&mut self, name: &Token, value: Value) -> Result<(), SpannedError> {
-        if self.values.contains_key(&name.lexeme) {
-            self.values.insert(name.lexeme.to_owned(), value);
+    pub fn assign(&mut self, name: &Ident, value: Value) -> Result<(), SpannedError> {
+        if self.values.contains_key(&name.symbol) {
+            self.values.insert(name.symbol.to_owned(), value);
             Ok(())
         } else {
-            Err((name, format!("Undefined variable '{}'", name.lexeme)).into())
+            Err((name.span, format!("Undefined variable '{}'", name.symbol)).into())
         }
     }
 
-    pub fn contains(&self, name: &Token) -> bool {
-        self.values.contains_key(&name.lexeme)
+    pub fn contains(&self, name: &Ident) -> bool {
+        self.values.contains_key(&name.symbol)
     }
 }
