@@ -126,7 +126,7 @@ fn shadowing() -> Result<()> {
     execute_sample(source, &mut output)?;
     let expect = "\
 inner a
-outer bc
+outer b
 global c
 outer a
 outer b
