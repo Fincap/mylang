@@ -43,7 +43,7 @@ impl Into<Value> for Function {
 #[derive(Clone)]
 pub enum Throw {
     Return(Value),
-    Error(TokenError),
+    Error(SpannedError),
 }
 impl From<Literal> for Throw {
     fn from(value: Literal) -> Throw {
@@ -55,19 +55,19 @@ impl From<Value> for Throw {
         Throw::Return(value)
     }
 }
-impl From<TokenError> for Throw {
-    fn from(value: TokenError) -> Throw {
+impl From<SpannedError> for Throw {
+    fn from(value: SpannedError) -> Throw {
         Throw::Error(value)
     }
 }
 impl From<(&Token, &str)> for Throw {
     fn from(value: (&Token, &str)) -> Self {
-        Throw::Error(TokenError::from(value))
+        Throw::Error(SpannedError::from(value))
     }
 }
 impl From<(&Token, String)> for Throw {
     fn from(value: (&Token, String)) -> Self {
-        Throw::Error(TokenError::from(value))
+        Throw::Error(SpannedError::from(value))
     }
 }
 

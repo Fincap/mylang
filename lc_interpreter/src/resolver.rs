@@ -5,7 +5,7 @@ use lc_core::*;
 use crate::*;
 
 type Scope = HashMap<String, bool>;
-type ResolverResult = Result<(), TokenError>;
+type ResolverResult = Result<(), SpannedError>;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum FunctionKind {
@@ -18,7 +18,7 @@ pub struct Resolver<'a, 'b> {
     interpreter: &'a mut Interpreter<'b>,
     scopes: Vec<Scope>,
     current_function: FunctionKind,
-    errors: Vec<TokenError>,
+    errors: Vec<SpannedError>,
 }
 impl<'a, 'b> Resolver<'a, 'b> {
     pub fn new(interpreter: &'a mut Interpreter<'b>) -> Self {
@@ -213,7 +213,7 @@ impl<'a, 'b> Resolver<'a, 'b> {
         self.scopes.pop();
     }
 
-    fn report_error(&mut self, e: TokenError) {
+    fn report_error(&mut self, e: SpannedError) {
         self.errors.push(e)
     }
 }

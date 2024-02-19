@@ -30,7 +30,7 @@ impl EnvironmentStack {
         self.stack.last_mut().unwrap().define(name, value);
     }
 
-    pub fn get(&self, name: &Token) -> Result<Value, TokenError> {
+    pub fn get(&self, name: &Token) -> Result<Value, SpannedError> {
         for env in self.stack.iter().rev() {
             if let Ok(value) = env.get(name) {
                 return Ok(value);
@@ -39,18 +39,18 @@ impl EnvironmentStack {
         Err((name, format!("Undefined variable '{}'", name.lexeme)).into())
     }
 
-    pub fn get_at(&self, name: &Token, depth: usize) -> Result<Value, TokenError> {
+    pub fn get_at(&self, name: &Token, depth: usize) -> Result<Value, SpannedError> {
         self.stack
             .get(self.stack.len() - 1 - depth)
             .unwrap()
             .get(name)
     }
 
-    pub fn global_get(&self, name: &Token) -> Result<Value, TokenError> {
+    pub fn global_get(&self, name: &Token) -> Result<Value, SpannedError> {
         self.stack.first().unwrap().get(name)
     }
 
-    pub fn assign(&mut self, name: &Token, value: Value) -> Result<(), TokenError> {
+    pub fn assign(&mut self, name: &Token, value: Value) -> Result<(), SpannedError> {
         for env in self.stack.iter_mut().rev() {
             if env.contains(name) {
                 if env.assign(name, value.to_owned()).is_ok() {
@@ -66,12 +66,12 @@ impl EnvironmentStack {
         name: &Token,
         value: Value,
         depth: usize,
-    ) -> Result<(), TokenError> {
+    ) -> Result<(), SpannedError> {
         let index = self.stack.len() - 1 - depth;
         self.stack.get_mut(index).unwrap().assign(name, value)
     }
 
-    pub fn global_assign(&mut self, name: &Token, value: Value) -> Result<(), TokenError> {
+    pub fn global_assign(&mut self, name: &Token, value: Value) -> Result<(), SpannedError> {
         self.stack.first_mut().unwrap().assign(name, value)
     }
 }
@@ -91,7 +91,7 @@ impl Environment {
         self.values.insert(name, value);
     }
 
-    pub fn get(&self, name: &Token) -> Result<Value, TokenError> {
+    pub fn get(&self, name: &Token) -> Result<Value, SpannedError> {
         if let Some(value) = self.values.get(&name.lexeme) {
             Ok(value.clone())
         } else {
@@ -99,7 +99,7 @@ impl Environment {
         }
     }
 
-    pub fn assign(&mut self, name: &Token, value: Value) -> Result<(), TokenError> {
+    pub fn assign(&mut self, name: &Token, value: Value) -> Result<(), SpannedError> {
         if self.values.contains_key(&name.lexeme) {
             self.values.insert(name.lexeme.to_owned(), value);
             Ok(())

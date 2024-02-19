@@ -20,8 +20,8 @@ impl fmt::Display for TranslationErrors {
     }
 }
 impl error::Error for TranslationErrors {}
-impl From<Vec<TokenError>> for TranslationErrors {
-    fn from(issues: Vec<TokenError>) -> Self {
+impl From<Vec<SpannedError>> for TranslationErrors {
+    fn from(issues: Vec<SpannedError>) -> Self {
         Self {
             issues: issues
                 .iter()
@@ -68,8 +68,8 @@ impl fmt::Display for RuntimeError {
     }
 }
 impl error::Error for RuntimeError {}
-impl From<TokenError> for RuntimeError {
-    fn from(value: TokenError) -> Self {
+impl From<SpannedError> for RuntimeError {
+    fn from(value: SpannedError) -> Self {
         Self {
             line: value.token.span.line,
             message: value.message,
@@ -78,17 +78,17 @@ impl From<TokenError> for RuntimeError {
 }
 
 #[derive(Clone, Debug)]
-pub struct TokenError {
+pub struct SpannedError {
     pub token: Token,
     pub message: String,
 }
-impl error::Error for TokenError {}
-impl fmt::Display for TokenError {
+impl error::Error for SpannedError {}
+impl fmt::Display for SpannedError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.message)
     }
 }
-impl From<(&Token, &str)> for TokenError {
+impl From<(&Token, &str)> for SpannedError {
     fn from(value: (&Token, &str)) -> Self {
         Self {
             token: value.0.to_owned(),
@@ -96,7 +96,7 @@ impl From<(&Token, &str)> for TokenError {
         }
     }
 }
-impl From<(&Token, String)> for TokenError {
+impl From<(&Token, String)> for SpannedError {
     fn from(value: (&Token, String)) -> Self {
         Self {
             token: value.0.to_owned(),

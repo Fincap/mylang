@@ -5,16 +5,16 @@ use crate::{
         Token,
         TokenKind::{self, *},
     },
-    Expr, TokenError, TranslationResult,
+    Expr, SpannedError, TranslationResult,
 };
 
-type ExprResult = Result<Expr, TokenError>;
-type StmtResult = Result<Stmt, TokenError>;
+type ExprResult = Result<Expr, SpannedError>;
+type StmtResult = Result<Stmt, SpannedError>;
 
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
-    errors: Vec<TokenError>,
+    errors: Vec<SpannedError>,
 }
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
@@ -463,7 +463,7 @@ impl Parser {
         self.tokens[self.current - 1].to_owned()
     }
 
-    fn consume(&mut self, t_type: TokenKind, message: &'static str) -> Result<Token, TokenError> {
+    fn consume(&mut self, t_type: TokenKind, message: &'static str) -> Result<Token, SpannedError> {
         if self.check(&t_type) {
             Ok(self.advance())
         } else {
@@ -487,7 +487,7 @@ impl Parser {
         }
     }
 
-    fn report_error(&mut self, e: TokenError) {
+    fn report_error(&mut self, e: SpannedError) {
         self.errors.push(e);
     }
 }

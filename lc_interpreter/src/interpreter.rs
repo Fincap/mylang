@@ -319,7 +319,7 @@ impl<'a> Interpreter<'a> {
         left: &Literal,
         op: &Token,
         right: &Literal,
-    ) -> Result<(f64, f64), TokenError> {
+    ) -> Result<(f64, f64), SpannedError> {
         let Literal::Number(left) = *left else {
             return Err((op, "Left operand must be a number.").into());
         };
