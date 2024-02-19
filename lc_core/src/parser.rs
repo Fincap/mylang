@@ -360,6 +360,7 @@ impl Parser {
     }
 
     fn finish_call(&mut self, ex: &Expr) -> ExprResult {
+        let left_paren = self.previous();
         let mut arguments = Vec::new();
         if !self.check(&RightParen) {
             loop {
@@ -378,8 +379,12 @@ impl Parser {
                 }
             }
         }
-        let paren = self.consume(RightParen, "Expected ')' after arguments.")?;
-        Ok(Expr::call(ex.to_owned(), paren, arguments))
+        let right_paren = self.consume(RightParen, "Expected ')' after arguments.")?;
+        Ok(Expr::call(
+            ex.to_owned(),
+            left_paren.span.to(right_paren.span),
+            arguments,
+        ))
     }
 
     fn primary(&mut self) -> ExprResult {

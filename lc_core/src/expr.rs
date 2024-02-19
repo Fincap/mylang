@@ -15,7 +15,7 @@ pub enum ExprKind {
     /// (`left`, `op`, `right`)
     Binary(Box<Expr>, BinaryOp, Box<Expr>),
     /// (`callee`, `paren`, `args`)
-    Call(Box<Expr>, Token, Vec<Expr>),
+    Call(Box<Expr>, Span, Vec<Expr>),
     /// (`expression`)
     Grouping(Box<Expr>),
     /// (`literal`)
@@ -162,12 +162,8 @@ impl Expr {
         )
     }
 
-    pub fn call(callee: Expr, paren: Token, args: Vec<Expr>) -> Self {
-        let span = callee.span.to(args.last().unwrap_or(&callee).span);
-        Self::new(
-            ExprKind::Call(Box::new(callee), paren.to_owned(), args),
-            span,
-        )
+    pub fn call(callee: Expr, arg_span: Span, args: Vec<Expr>) -> Self {
+        Self::new(ExprKind::Call(Box::new(callee), arg_span, args), arg_span)
     }
 
     pub fn grouping(ex: Expr) -> Self {

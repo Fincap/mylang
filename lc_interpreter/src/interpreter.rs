@@ -147,7 +147,7 @@ impl<'a> Interpreter<'a> {
         match &expr.kind {
             ExprKind::Assign(id, right) => self.visit_assign_expr(expr, id, right),
             ExprKind::Binary(left, op, right) => self.visit_binary_expr(left, op, right),
-            ExprKind::Call(callee, paren, args) => self.visit_call_expr(callee, paren, args),
+            ExprKind::Call(callee, span, args) => self.visit_call_expr(callee, span, args),
             ExprKind::Grouping(ex) => self.evaluate(ex),
             ExprKind::Literal(lit) => Ok(lit.to_owned().into()),
             ExprKind::Logical(left, op, right) => self.visit_logical_expr(left, op, right),
@@ -230,9 +230,9 @@ impl<'a> Interpreter<'a> {
         }
     }
 
-    fn visit_call_expr(&mut self, callee: &Expr, paren: &Token, args: &Vec<Expr>) -> ExprResult {
+    fn visit_call_expr(&mut self, callee: &Expr, span: &Span, args: &Vec<Expr>) -> ExprResult {
         let ExprKind::Variable(identifier) = &callee.kind else {
-            return Err((paren.span, "Not a valid function call.").into());
+            return Err((*span, "Not a valid function call.").into());
         };
         let mut arguments = Vec::new();
         for arg in args {
