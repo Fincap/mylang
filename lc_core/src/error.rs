@@ -60,7 +60,7 @@ impl<'a> TranslationErrors {
 
 #[derive(Debug)]
 pub struct RuntimeError {
-    line: usize,
+    line: usize, //TODO: change to Option<Span>. Once Expr contains their respective Span, set this to first available Span when bubbling up on error.
     message: String,
 }
 impl fmt::Display for RuntimeError {

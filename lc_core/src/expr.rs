@@ -3,7 +3,7 @@ use std::mem;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::token::Token;
-use crate::TokenKind;
+use crate::{Span, TokenKind};
 
 pub const LIMIT_FN_ARGS: usize = 255;
 static EXPR_ID: AtomicUsize = AtomicUsize::new(0);
@@ -60,6 +60,7 @@ impl UnaryOp {
 pub struct Expr {
     id: usize,
     pub kind: ExprKind,
+    pub span: Span,
 }
 impl Hash for Expr {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
@@ -73,53 +74,62 @@ impl PartialEq for Expr {
 }
 impl Eq for Expr {}
 impl Expr {
-    pub fn new(kind: ExprKind) -> Self {
+    pub fn new(kind: ExprKind, span: Span) -> Self {
         let id = EXPR_ID.fetch_add(1, Ordering::SeqCst);
-        Self { id, kind }
+        Self { id, kind, span }
     }
 
     pub fn assign(var: Token, ex: Expr) -> Self {
-        Self::new(ExprKind::Assign(var, Box::new(ex)))
+        Self::new(ExprKind::Assign(var.to_owned(), Box::new(ex)), var.span)
     }
 
     pub fn binary(left: Expr, op: Token, right: Expr) -> Self {
-        Self::new(ExprKind::Binary(Box::new(left), op, Box::new(right)))
+        Self::new(
+            ExprKind::Binary(Box::new(left), op.to_owned(), Box::new(right)),
+            op.span,
+        )
     }
 
     pub fn call(callee: Expr, paren: Token, args: Vec<Expr>) -> Self {
-        Self::new(ExprKind::Call(Box::new(callee), paren, args))
+        Self::new(
+            ExprKind::Call(Box::new(callee), paren.to_owned(), args),
+            paren.span,
+        )
     }
 
     pub fn grouping(ex: Expr) -> Self {
-        Self::new(ExprKind::Grouping(Box::new(ex)))
+        Self::new(ExprKind::Grouping(Box::new(ex.to_owned())), ex.span)
     }
 
     pub fn literal_string(str: String) -> Self {
-        Self::new(ExprKind::Literal(Literal::String(str)))
+        Self::new(ExprKind::Literal(Literal::String(str)), Span::default())
     }
 
     pub fn literal_number(num: f64) -> Self {
-        Self::new(ExprKind::Literal(Literal::Number(num)))
+        Self::new(ExprKind::Literal(Literal::Number(num)), Span::default())
     }
 
     pub fn literal_bool(b: bool) -> Self {
-        Self::new(ExprKind::Literal(Literal::Bool(b)))
+        Self::new(ExprKind::Literal(Literal::Bool(b)), Span::default())
     }
 
     pub fn literal_null() -> Self {
-        Self::new(ExprKind::Literal(Literal::Null))
+        Self::new(ExprKind::Literal(Literal::Null), Span::default())
     }
 
     pub fn logical(left: Expr, op: Token, right: Expr) -> Self {
-        Self::new(ExprKind::Logical(Box::new(left), op, Box::new(right)))
+        Self::new(
+            ExprKind::Logical(Box::new(left), op.to_owned(), Box::new(right)),
+            op.span,
+        )
     }
 
     pub fn unary(op: Token, ex: Expr) -> Self {
-        Self::new(ExprKind::Unary(op, Box::new(ex)))
+        Self::new(ExprKind::Unary(op.to_owned(), Box::new(ex)), op.span)
     }
 
     pub fn var(var: Token) -> Self {
-        Self::new(ExprKind::Variable(var))
+        Self::new(ExprKind::Variable(var.to_owned()), var.span)
     }
 }
 
