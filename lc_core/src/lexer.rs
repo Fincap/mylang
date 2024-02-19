@@ -1,6 +1,6 @@
 use crate::{
     token::{Token, TokenKind},
-    Span, SpanMessage, TranslationResult,
+    Span, SpannedMessage, TranslationResult,
 };
 use phf::*;
 
@@ -29,7 +29,7 @@ pub struct Scanner {
     start: usize,
     current: usize,
     line: usize,
-    errors: Vec<SpanMessage>,
+    errors: Vec<SpannedMessage>,
 }
 impl Scanner {
     pub fn new(source: String) -> Self {
@@ -250,6 +250,6 @@ impl Scanner {
     }
 
     fn report_error(&mut self, line: usize, message: String) {
-        self.errors.push((line, message));
+        self.errors.push((Span::new(line), message));
     }
 }
