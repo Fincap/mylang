@@ -23,7 +23,7 @@ pub enum ExprKind {
     /// (`left`, `op`, `right`)
     Logical(Box<Expr>, Token, Box<Expr>),
     /// (`op`, `right`)
-    Unary(Token, Box<Expr>),
+    Unary(UnaryOp, Box<Expr>),
     /// (`identifier`)
     Variable(Ident),
 }
@@ -145,7 +145,7 @@ impl Expr {
 
     pub fn unary(op: Token, ex: Expr) -> Self {
         let span = op.span.to(ex.span);
-        Self::new(ExprKind::Unary(op.to_owned(), Box::new(ex)), span)
+        Self::new(ExprKind::Unary(UnaryOp::from(op), Box::new(ex)), span)
     }
 
     pub fn var(var: Token) -> Self {

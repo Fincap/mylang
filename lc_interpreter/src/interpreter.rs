@@ -151,7 +151,7 @@ impl<'a> Interpreter<'a> {
             ExprKind::Grouping(ex) => self.evaluate(ex),
             ExprKind::Literal(lit) => Ok(lit.to_owned().into()),
             ExprKind::Logical(left, op, right) => self.visit_logical_expr(left, op, right),
-            ExprKind::Unary(op, right) => self.visit_unary_expr(op, right),
+            ExprKind::Unary(op, right) => self.visit_unary_expr(expr, op, right),
             ExprKind::Variable(id) => self.visit_var_expr(expr, id),
         }
     }
@@ -264,25 +264,20 @@ impl<'a> Interpreter<'a> {
         self.evaluate(right)
     }
 
-    fn visit_unary_expr(&mut self, op: &Token, right: &Expr) -> ExprResult {
+    fn visit_unary_expr(&mut self, ex: &Expr, op: &UnaryOp, right: &Expr) -> ExprResult {
         let Value::Literal(right) = self.evaluate(right)? else {
             return Err((
-                op.span,
+                ex.span,
                 "Unary operand must be numeric. Did you forget to call the function?",
             )
                 .into());
         };
-        match op.kind {
-            TokenKind::Minus => match right {
+        match op {
+            UnaryOp::Neg => match right {
                 Literal::Number(num) => Ok(Literal::Number(-num).into()),
-                _ => Err((op.span, "Unary operand must be numeric.").into()),
+                _ => Err((ex.span, "Unary operand must be numeric.").into()),
             },
-            TokenKind::Bang => Ok(Literal::Bool(!right.is_truthy()).into()),
-            _ => Err((
-                op.span,
-                "Interpreter data corruption, unary expression has invalid operator",
-            )
-                .into()),
+            UnaryOp::Not => Ok(Literal::Bool(!right.is_truthy()).into()),
         }
     }
 
