@@ -2,10 +2,10 @@ use crate::{
     expr::{ExprKind, LIMIT_FN_ARGS},
     stmt::Stmt,
     token::{
-        Token, TokenError,
+        Token,
         TokenKind::{self, *},
     },
-    Expr, TranslationResult,
+    Expr, TokenError, TranslationResult,
 };
 
 type ExprResult = Result<Expr, TokenError>;

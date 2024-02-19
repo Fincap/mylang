@@ -1,8 +1,4 @@
-use std::{
-    error,
-    fmt::{self, Display},
-    hash::Hash,
-};
+use std::hash::Hash;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenKind {
@@ -86,33 +82,5 @@ impl Token {
 
     pub fn as_str(&self) -> String {
         format!("{} {:?}", self.lexeme, self.kind)
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct TokenError {
-    pub token: Token,
-    pub message: String,
-}
-impl error::Error for TokenError {}
-impl Display for TokenError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.message)
-    }
-}
-impl From<(&Token, &str)> for TokenError {
-    fn from(value: (&Token, &str)) -> Self {
-        Self {
-            token: value.0.to_owned(),
-            message: value.1.to_string(),
-        }
-    }
-}
-impl From<(&Token, String)> for TokenError {
-    fn from(value: (&Token, String)) -> Self {
-        Self {
-            token: value.0.to_owned(),
-            message: value.1,
-        }
     }
 }
