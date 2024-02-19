@@ -55,7 +55,7 @@ impl Scanner {
             String::new(),
             self.tokens
                 .last()
-                .map_or(Span::new(1), |last| Span::new(last.span.line)),
+                .map_or(Span::new(1, 0, self.current), |last| last.span),
         ));
         (self.tokens.to_owned(), self.errors.clone().into())
     }
@@ -237,8 +237,11 @@ impl Scanner {
 
     fn add_token(&mut self, p_type: TokenKind) {
         let text = &self.source[self.start..self.current];
-        self.tokens
-            .push(Token::new(p_type, String::from(text), Span::new(self.line)));
+        self.tokens.push(Token::new(
+            p_type,
+            String::from(text),
+            Span::new(self.line, self.start, self.current),
+        ));
     }
 
     fn is_at_end(&self) -> bool {
@@ -250,6 +253,7 @@ impl Scanner {
     }
 
     fn report_error(&mut self, line: usize, message: String) {
-        self.errors.push((Span::new(line), message));
+        self.errors
+            .push((Span::new(line, self.start, self.current), message));
     }
 }

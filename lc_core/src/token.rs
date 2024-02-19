@@ -1,4 +1,4 @@
-use std::hash::Hash;
+use std::{cmp, hash::Hash};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenKind {
@@ -56,10 +56,40 @@ pub enum TokenKind {
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
 pub struct Span {
     pub line: usize,
+    pub start: usize,
+    pub end: usize,
 }
 impl Span {
-    pub fn new(line: usize) -> Self {
-        Self { line }
+    pub fn new(line: usize, start: usize, end: usize) -> Self {
+        Self { line, start, end }
+    }
+
+    pub fn len(&self) -> usize {
+        self.end - self.start
+    }
+
+    pub fn to(&self, end: Span) -> Span {
+        Span::new(
+            cmp::min(self.line, end.line),
+            cmp::min(self.start, end.start),
+            cmp::max(self.end, end.end),
+        )
+    }
+
+    pub fn between(&self, end: Span) -> Span {
+        Span::new(
+            cmp::min(self.line, end.line),
+            cmp::max(self.end, end.end),
+            cmp::min(self.start, end.start),
+        )
+    }
+
+    pub fn until(&self, end: Span) -> Span {
+        Span::new(
+            cmp::min(self.line, end.line),
+            cmp::min(self.start, end.start),
+            cmp::max(self.start, end.start),
+        )
     }
 }
 

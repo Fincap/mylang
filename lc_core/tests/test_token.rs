@@ -6,11 +6,11 @@ use TokenKind::*;
 
 #[test]
 fn token_hash() {
-    let a = Token::new(Null, "null".into(), Span::new(1));
-    let b = Token::new(Null, "null".into(), Span::new(1));
-    let c = Token::new(If, "null".into(), Span::new(1));
-    let d = Token::new(Null, "null".into(), Span::new(2));
-    let e = Token::new(Null, "null ".into(), Span::new(2));
+    let a = Token::new(Null, "null".into(), Span::new(1, 2, 2));
+    let b = Token::new(Null, "null".into(), Span::new(1, 2, 2));
+    let c = Token::new(If, "null".into(), Span::new(1, 2, 2));
+    let d = Token::new(Null, "null".into(), Span::new(2, 5, 6));
+    let e = Token::new(Null, "null ".into(), Span::new(2, 5, 6));
 
     assert_eq!(t_hash(&a), t_hash(b));
     assert_eq!(t_hash(&a), t_hash(c));
@@ -20,11 +20,11 @@ fn token_hash() {
 
 #[test]
 fn token_eq() {
-    let a = Token::new(Null, "null".into(), Span::new(1));
-    let b = Token::new(Null, "null".into(), Span::new(1));
-    let c = Token::new(If, "null".into(), Span::new(1));
-    let d = Token::new(Null, "null".into(), Span::new(2));
-    let e = Token::new(Null, "null ".into(), Span::new(2));
+    let a = Token::new(Null, "null".into(), Span::new(1, 2, 2));
+    let b = Token::new(Null, "null".into(), Span::new(1, 2, 2));
+    let c = Token::new(If, "null".into(), Span::new(1, 2, 2));
+    let d = Token::new(Null, "null".into(), Span::new(2, 5, 6));
+    let e = Token::new(Null, "null ".into(), Span::new(2, 5, 6));
 
     assert_eq!(a, b);
     assert_eq!(a, c);
