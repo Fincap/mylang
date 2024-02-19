@@ -1,11 +1,7 @@
-use std::{
-    error,
-    fmt::{self, Display},
-    hash::Hash,
-};
+use std::{cmp, hash::Hash};
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum TokenType {
+pub enum TokenKind {
     // Literals
     Identifier,
     String(String),
@@ -57,62 +53,78 @@ pub enum TokenType {
     EOF,
 }
 
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
+pub struct Span {
+    pub line: usize,
+    pub start: usize,
+    pub end: usize,
+}
+impl Span {
+    pub fn new(line: usize, start: usize, end: usize) -> Self {
+        Self { line, start, end }
+    }
+
+    pub fn len(&self) -> usize {
+        self.end - self.start
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.start == self.end
+    }
+
+    pub fn to(&self, end: Span) -> Span {
+        Span::new(
+            cmp::min(self.line, end.line),
+            cmp::min(self.start, end.start),
+            cmp::max(self.end, end.end),
+        )
+    }
+
+    pub fn between(&self, end: Span) -> Span {
+        Span::new(
+            cmp::min(self.line, end.line),
+            cmp::max(self.end, end.end),
+            cmp::min(self.start, end.start),
+        )
+    }
+
+    pub fn until(&self, end: Span) -> Span {
+        Span::new(
+            cmp::min(self.line, end.line),
+            cmp::min(self.start, end.start),
+            cmp::max(self.start, end.start),
+        )
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Token {
-    pub t_type: TokenType,
+    pub kind: TokenKind,
     pub lexeme: String,
-    pub line: usize,
+    pub span: Span,
 }
 impl Hash for Token {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.lexeme.hash(state);
-        self.line.hash(state);
+        self.span.hash(state);
     }
 }
 impl PartialEq for Token {
     fn eq(&self, other: &Self) -> bool {
-        self.lexeme == other.lexeme && self.line == other.line
+        self.lexeme == other.lexeme && self.span == other.span
     }
 }
 impl Eq for Token {}
 impl Token {
-    pub fn new(t_type: TokenType, lexeme: String, line: usize) -> Self {
+    pub fn new(t_type: TokenKind, lexeme: String, span: Span) -> Self {
         Self {
-            t_type,
+            kind: t_type,
             lexeme,
-            line,
+            span,
         }
     }
 
     pub fn as_str(&self) -> String {
-        format!("{} {:?}", self.lexeme, self.t_type)
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct TokenError {
-    pub token: Token,
-    pub message: String,
-}
-impl error::Error for TokenError {}
-impl Display for TokenError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.message)
-    }
-}
-impl From<(&Token, &str)> for TokenError {
-    fn from(value: (&Token, &str)) -> Self {
-        Self {
-            token: value.0.to_owned(),
-            message: value.1.to_string(),
-        }
-    }
-}
-impl From<(&Token, String)> for TokenError {
-    fn from(value: (&Token, String)) -> Self {
-        Self {
-            token: value.0.to_owned(),
-            message: value.1,
-        }
+        format!("{} {:?}", self.lexeme, self.kind)
     }
 }

@@ -1,4 +1,5 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use core::fmt;
+use std::{collections::HashMap, io};
 
 use crate::*;
 use lc_core::*;
@@ -6,34 +7,36 @@ use lc_core::*;
 type ExprResult = Result<Value, Throw>;
 type StmtResult = Result<(), Throw>;
 
-#[derive(Debug)]
-pub struct Interpreter {
-    pub globals: Rc<RefCell<Environment>>,
-    pub environment: Rc<RefCell<Environment>>,
-    locals: HashMap<Token, usize>,
+pub struct Interpreter<'a> {
+    pub environment: EnvironmentStack,
+    locals: HashMap<Expr, usize>,
+    output: &'a mut dyn io::Write,
 }
-impl Interpreter {
-    pub fn new() -> Self {
-        let globals = Rc::new(RefCell::new(Environment::new()));
-        globals
-            .borrow_mut()
-            .define("clock".into(), Value::Function(Box::new(LcClock)));
-        globals
-            .borrow_mut()
-            .define("typeof".into(), Value::Function(Box::new(LcTypeof)));
-        let environment = globals.to_owned();
+impl<'a> fmt::Debug for Interpreter<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Interpreter")
+            .field("environment", &self.environment)
+            .field("locals", &self.locals)
+            .finish()
+    }
+}
+impl<'a> Interpreter<'a> {
+    pub fn new(output: &'a mut dyn io::Write) -> Self {
+        let mut globals = Environment::new();
+        define_builtins(&mut globals);
+        let environment = EnvironmentStack::new(globals);
         Self {
-            globals,
             environment,
             locals: HashMap::new(),
+            output,
         }
     }
 
-    pub fn interpret(&mut self, statements: Vec<Stmt>) -> anyhow::Result<()> {
+    pub fn interpret(&mut self, statements: Vec<Stmt>) -> Result<(), RuntimeError> {
         for statement in &statements {
             if let Err(e) = self.execute(statement) {
                 if let Throw::Error(e) = e {
-                    return runtime_error(e);
+                    return Err(e.into());
                 }
                 break;
             }
@@ -63,25 +66,21 @@ impl Interpreter {
     pub fn execute_block(
         &mut self,
         statements: &Vec<Stmt>,
-        environment: Environment,
+        environment: &Environment,
     ) -> StmtResult {
-        let previous = self.environment.to_owned();
-        self.environment = Rc::new(RefCell::new(environment));
+        self.environment.begin_scope(environment.to_owned());
         for statement in statements {
             if let Err(e) = self.execute(statement) {
-                self.environment = previous;
+                self.environment.end_scope();
                 return Err(e);
             }
         }
-        self.environment = previous;
+        self.environment.end_scope();
         Ok(())
     }
 
     fn visit_block_stmt(&mut self, statements: &Vec<Stmt>) -> StmtResult {
-        self.execute_block(
-            statements,
-            Environment::with_parent(self.environment.to_owned()),
-        )
+        self.execute_block(statements, &Environment::new())
     }
 
     fn visit_expr_stmt(&mut self, ex: &Expr) -> StmtResult {
@@ -91,24 +90,23 @@ impl Interpreter {
         }
     }
 
-    fn visit_fn_stmt(&mut self, name: &Token, params: &Vec<Token>, body: &Vec<Stmt>) -> StmtResult {
-        let function = Function::new(name, params, body, &self.environment);
+    fn visit_fn_stmt(&mut self, name: &Ident, params: &Vec<Ident>, body: &Vec<Stmt>) -> StmtResult {
+        let function = Function::new(name, params, body, &self.environment.top());
         self.environment
-            .borrow_mut()
-            .define(name.lexeme.to_owned(), function.into());
+            .define(name.symbol.to_owned(), function.into());
         Ok(())
     }
 
     fn visit_if_stmt(
         &mut self,
         condition: &Expr,
-        st_then: &Box<Stmt>,
+        st_then: &Stmt,
         st_else: &Option<Box<Stmt>>,
     ) -> StmtResult {
         if self.evaluate(condition)?.is_truthy() {
-            self.execute(&st_then)?;
+            self.execute(st_then)?;
         } else if let Some(st_else) = st_else {
-            self.execute(&st_else)?;
+            self.execute(st_else)?;
         }
         Ok(())
     }
@@ -116,7 +114,7 @@ impl Interpreter {
     fn visit_print_stmt(&mut self, ex: &Expr) -> StmtResult {
         match self.evaluate(ex) {
             Ok(lit) => {
-                println!("{}", lit.as_str());
+                writeln!(self.output, "{}", lit.as_str()).unwrap();
                 Ok(())
             }
             Err(err) => Err(err),
@@ -128,17 +126,15 @@ impl Interpreter {
         Err(value.into())
     }
 
-    fn visit_let_stmt(&mut self, id: &Token, initializer: &Expr) -> StmtResult {
+    fn visit_let_stmt(&mut self, id: &Ident, initializer: &Expr) -> StmtResult {
         let value = self.evaluate(initializer)?;
-        self.environment
-            .borrow_mut()
-            .define(id.lexeme.to_owned(), value.into());
+        self.environment.define(id.symbol.to_owned(), value);
         Ok(())
     }
 
-    fn visit_while_stmt(&mut self, condition: &Expr, body: &Box<Stmt>) -> StmtResult {
+    fn visit_while_stmt(&mut self, condition: &Expr, body: &Stmt) -> StmtResult {
         while self.evaluate(condition)?.is_truthy() {
-            self.execute(&body)?;
+            self.execute(body)?;
         }
         Ok(())
     }
@@ -147,116 +143,104 @@ impl Interpreter {
         self.visit_expr(ex)
     }
 
-    fn visit_expr(&mut self, ex: &Expr) -> ExprResult {
-        match ex {
-            Expr::Assign(id, right) => self.visit_assign_expr(id, right),
-            Expr::Binary(left, op, right) => self.visit_binary_expr(left, op, right),
-            Expr::Call(callee, paren, args) => self.visit_call_expr(callee, paren, args),
-            Expr::Grouping(ex) => self.evaluate(ex),
-            Expr::Literal(lit) => Ok(lit.to_owned().into()),
-            Expr::Logical(left, op, right) => self.visit_logical_expr(left, op, right),
-            Expr::Unary(op, ex) => self.visit_unary_expr(op, ex),
-            Expr::Variable(id) => self.visit_var_expr(id),
+    fn visit_expr(&mut self, expr: &Expr) -> ExprResult {
+        match &expr.kind {
+            ExprKind::Assign(id, right) => self.visit_assign_expr(expr, id, right),
+            ExprKind::Binary(left, op, right) => self.visit_binary_expr(left, op, right),
+            ExprKind::Call(callee, span, args) => self.visit_call_expr(callee, span, args),
+            ExprKind::Grouping(ex) => self.evaluate(ex),
+            ExprKind::Literal(lit) => Ok(lit.to_owned().into()),
+            ExprKind::Logical(left, op, right) => self.visit_logical_expr(left, op, right),
+            ExprKind::Unary(op, right) => self.visit_unary_expr(expr, op, right),
+            ExprKind::Variable(id) => self.visit_var_expr(expr, id),
         }
     }
 
-    fn visit_assign_expr(&mut self, id: &Token, right: &Box<Expr>) -> ExprResult {
+    fn visit_assign_expr(&mut self, ex: &Expr, id: &Ident, right: &Expr) -> ExprResult {
         let value = self.evaluate(right)?;
-        if let Some(distance) = self.locals.get(id) {
+        if let Some(distance) = self.locals.get(ex) {
             self.environment
-                .borrow_mut()
                 .assign_at(id, value.to_owned(), *distance)?;
         } else {
-            self.globals
-                .borrow_mut()
-                .assign(id, value.to_owned().into())?;
+            self.environment.global_assign(id, value.to_owned())?;
         }
         Ok(value)
     }
 
-    fn visit_binary_expr(&mut self, left: &Box<Expr>, op: &Token, right: &Box<Expr>) -> ExprResult {
-        let Value::Literal(left) = self.evaluate(&left)? else {
+    fn visit_binary_expr(&mut self, left: &Expr, op: &BinaryOp, right: &Expr) -> ExprResult {
+        let span = left.span.to(right.span);
+        let Value::Literal(left) = self.evaluate(left)? else {
             return Err((
-                op,
+                span,
                 "Operands must be two numbers or two strings. Did you forget to call the function?",
             )
                 .into());
         };
-        let Value::Literal(right) = self.evaluate(&right)? else {
+        let Value::Literal(right) = self.evaluate(right)? else {
             return Err((
-                op,
+                span,
                 "Operands must be two numbers or two strings. Did you forget to call the function?",
             )
                 .into());
         };
-        match op.t_type {
-            TokenType::Minus => {
-                let (left, right) = self.get_number_ops(&left, op, &right)?;
+        match op {
+            BinaryOp::Minus => {
+                let (left, right) = self.get_number_ops(&left, span, &right)?;
                 Ok(Literal::Number(left - right).into())
             }
-            TokenType::Slash => {
-                let (left, right) = self.get_number_ops(&left, op, &right)?;
+            BinaryOp::Divide => {
+                let (left, right) = self.get_number_ops(&left, span, &right)?;
                 Ok(Literal::Number(left / right).into())
             }
-            TokenType::Star => {
-                let (left, right) = self.get_number_ops(&left, op, &right)?;
+            BinaryOp::Multiply => {
+                let (left, right) = self.get_number_ops(&left, span, &right)?;
                 Ok(Literal::Number(left * right).into())
             }
-            TokenType::Plus => match left {
+            BinaryOp::Plus => match left {
                 Literal::Number(_) => {
-                    let (left, right) = self.get_number_ops(&left, op, &right)?;
+                    let (left, right) = self.get_number_ops(&left, span, &right)?;
                     Ok(Literal::Number(left + right).into())
                 }
                 Literal::String(str) => {
                     let Literal::String(right) = right else {
-                        return Err((op, "Cannot concatenate non-string value.").into());
+                        return Err((span, "Cannot concatenate non-string value.").into());
                     };
                     Ok(Literal::String(str.to_owned() + &right).into())
                 }
-                _ => Err((op, "Operands must be two numbers or two strings.").into()),
+                _ => Err((span, "Operands must be two numbers or two strings.").into()),
             },
-            TokenType::Greater => {
-                let (left, right) = self.get_number_ops(&left, op, &right)?;
+            BinaryOp::Greater => {
+                let (left, right) = self.get_number_ops(&left, span, &right)?;
                 Ok(Literal::Bool(left > right).into())
             }
-            TokenType::GreaterEqual => {
-                let (left, right) = self.get_number_ops(&left, op, &right)?;
+            BinaryOp::GreaterEqual => {
+                let (left, right) = self.get_number_ops(&left, span, &right)?;
                 Ok(Literal::Bool(left >= right).into())
             }
-            TokenType::Less => {
-                let (left, right) = self.get_number_ops(&left, op, &right)?;
+            BinaryOp::Less => {
+                let (left, right) = self.get_number_ops(&left, span, &right)?;
                 Ok(Literal::Bool(left < right).into())
             }
-            TokenType::LessEqual => {
-                let (left, right) = self.get_number_ops(&left, op, &right)?;
+            BinaryOp::LessEqual => {
+                let (left, right) = self.get_number_ops(&left, span, &right)?;
                 Ok(Literal::Bool(left <= right).into())
             }
-            TokenType::BangEqual => Ok(Literal::Bool(left != right).into()),
-            TokenType::EqualEqual => Ok(Literal::Bool(left == right).into()),
-            _ => Err((
-                op,
-                "Interpreter data corruption, binary expression has invalid operator",
-            )
-                .into()),
+            BinaryOp::NotEqual => Ok(Literal::Bool(left != right).into()),
+            BinaryOp::Equal => Ok(Literal::Bool(left == right).into()),
         }
     }
 
-    fn visit_call_expr(
-        &mut self,
-        callee: &Box<Expr>,
-        paren: &Token,
-        args: &Vec<Expr>,
-    ) -> ExprResult {
-        let Expr::Variable(identifier) = *callee.to_owned() else {
-            return Err((paren, "Not a valid function call.").into());
+    fn visit_call_expr(&mut self, callee: &Expr, span: &Span, args: &Vec<Expr>) -> ExprResult {
+        let ExprKind::Variable(identifier) = &callee.kind else {
+            return Err((*span, "Not a valid function call.").into());
         };
         let mut arguments = Vec::new();
         for arg in args {
             arguments.push(self.evaluate(arg)?);
         }
-        let value = self.environment.borrow().get(&identifier)?;
+        let value = self.environment.get(identifier)?;
         match value {
-            Value::Literal(_) => Err((&identifier, "Not a valid function call.").into()),
+            Value::Literal(_) => Err((identifier.span, "Not a valid function call.").into()),
             Value::Function(mut func) => match func.call(self, &arguments) {
                 Throw::Return(value) => Ok(value),
                 Throw::Error(err) => Err(err.into()), // only keep propagating up call stack if it was an *actual* error
@@ -264,73 +248,61 @@ impl Interpreter {
         }
     }
 
-    fn visit_logical_expr(
-        &mut self,
-        left: &Box<Expr>,
-        op: &Token,
-        right: &Box<Expr>,
-    ) -> ExprResult {
-        let left = self.evaluate(&left)?;
-        if op.t_type == TokenType::Or {
-            if left.is_truthy() {
-                return Ok(left);
-            }
-        } else {
-            if !left.is_truthy() {
-                return Ok(left);
-            }
+    fn visit_logical_expr(&mut self, left: &Expr, op: &LogicOp, right: &Expr) -> ExprResult {
+        let left = self.evaluate(left)?;
+        if *op == LogicOp::Or && left.is_truthy() {
+            return Ok(left);
         }
+        if !left.is_truthy() {
+            return Ok(left);
+        }
+
         self.evaluate(right)
     }
 
-    fn visit_unary_expr(&mut self, op: &Token, ex: &Box<Expr>) -> ExprResult {
-        let Value::Literal(right) = self.evaluate(ex)? else {
+    fn visit_unary_expr(&mut self, ex: &Expr, op: &UnaryOp, right: &Expr) -> ExprResult {
+        let Value::Literal(right) = self.evaluate(right)? else {
             return Err((
-                op,
+                ex.span,
                 "Unary operand must be numeric. Did you forget to call the function?",
             )
                 .into());
         };
-        match op.t_type {
-            TokenType::Minus => match right {
+        match op {
+            UnaryOp::Negative => match right {
                 Literal::Number(num) => Ok(Literal::Number(-num).into()),
-                _ => Err((op, "Unary operand must be numeric.").into()),
+                _ => Err((ex.span, "Unary operand must be numeric.").into()),
             },
-            TokenType::Bang => Ok(Literal::Bool(!right.is_truthy()).into()),
-            _ => Err((
-                op,
-                "Interpreter data corruption, unary expression has invalid operator",
-            )
-                .into()),
+            UnaryOp::Not => Ok(Literal::Bool(!right.is_truthy()).into()),
         }
     }
 
-    fn visit_var_expr(&mut self, id: &Token) -> ExprResult {
-        self.look_up_variable(id)
+    fn visit_var_expr(&mut self, ex: &Expr, id: &Ident) -> ExprResult {
+        self.look_up_variable(ex, id)
     }
 
-    pub fn resolve(&mut self, id: &Token, depth: usize) {
-        self.locals.insert(id.to_owned(), depth);
+    pub fn resolve(&mut self, ex: &Expr, depth: usize) {
+        self.locals.insert(ex.to_owned(), depth);
     }
 
-    fn look_up_variable(&self, id: &Token) -> ExprResult {
-        match self.locals.get(id) {
-            Some(distance) => Ok(self.environment.borrow_mut().get_at(&id, *distance)?),
-            None => Ok(self.globals.borrow_mut().get(&id)?),
+    fn look_up_variable(&self, ex: &Expr, id: &Ident) -> ExprResult {
+        match self.locals.get(ex) {
+            Some(distance) => Ok(self.environment.get_at(id, *distance)?),
+            None => Ok(self.environment.global_get(id)?),
         }
     }
 
     fn get_number_ops(
         &self,
         left: &Literal,
-        op: &Token,
+        span: Span,
         right: &Literal,
-    ) -> Result<(f64, f64), TokenError> {
+    ) -> Result<(f64, f64), SpannedError> {
         let Literal::Number(left) = *left else {
-            return Err((op, "Left operand must be a number.").into());
+            return Err((span, "Left operand must be a number.").into());
         };
         let Literal::Number(right) = *right else {
-            return Err((op, "Right operand must be a number.").into());
+            return Err((span, "Right operand must be a number.").into());
         };
         Ok((left, right))
     }

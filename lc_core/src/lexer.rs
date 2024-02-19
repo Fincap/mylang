@@ -1,26 +1,26 @@
 use crate::{
-    error::lexer_error,
-    token::{Token, TokenType},
+    token::{Token, TokenKind},
+    Span, SpannedMessage, TranslationResult,
 };
 use phf::*;
 
-static KEYWORDS: phf::Map<&'static str, TokenType> = phf_map! {
-    "and" => TokenType::And,
-    "class" => TokenType::Class,
-    "else" => TokenType::Else,
-    "false" => TokenType::False,
-    "fn" => TokenType::Fn,
-    "for" => TokenType::For,
-    "if" => TokenType::If,
-    "let" => TokenType::Let,
-    "null" => TokenType::Null,
-    "or" => TokenType::Or,
-    "print" => TokenType::Print,
-    "return" => TokenType::Return,
-    "super" => TokenType::Super,
-    "this" => TokenType::This,
-    "true" => TokenType::True,
-    "while" => TokenType::While,
+static KEYWORDS: phf::Map<&'static str, TokenKind> = phf_map! {
+    "and" => TokenKind::And,
+    "class" => TokenKind::Class,
+    "else" => TokenKind::Else,
+    "false" => TokenKind::False,
+    "fn" => TokenKind::Fn,
+    "for" => TokenKind::For,
+    "if" => TokenKind::If,
+    "let" => TokenKind::Let,
+    "null" => TokenKind::Null,
+    "or" => TokenKind::Or,
+    "print" => TokenKind::Print,
+    "return" => TokenKind::Return,
+    "super" => TokenKind::Super,
+    "this" => TokenKind::This,
+    "true" => TokenKind::True,
+    "while" => TokenKind::While,
 };
 
 pub struct Scanner {
@@ -29,6 +29,7 @@ pub struct Scanner {
     start: usize,
     current: usize,
     line: usize,
+    errors: Vec<SpannedMessage>,
 }
 impl Scanner {
     pub fn new(source: String) -> Self {
@@ -38,19 +39,25 @@ impl Scanner {
             start: 0,
             current: 0,
             line: 1,
+            errors: Vec::new(),
         }
     }
 
-    pub fn scan_tokens(&mut self) -> Vec<Token> {
+    pub fn scan_tokens(&mut self) -> TranslationResult<Vec<Token>> {
         while !self.is_at_end() {
             // Beginning of next lexeme
             self.start = self.current;
             self.scan_token()
         }
 
-        self.tokens
-            .push(Token::new(TokenType::EOF, String::new(), self.line - 1));
-        self.tokens.to_owned()
+        self.tokens.push(Token::new(
+            TokenKind::EOF,
+            String::new(),
+            self.tokens
+                .last()
+                .map_or(Span::new(1, 0, self.current), |last| last.span),
+        ));
+        (self.tokens.to_owned(), self.errors.clone().into())
     }
 
     fn scan_token(&mut self) {
@@ -58,64 +65,64 @@ impl Scanner {
         match c {
             ' ' | '\r' | '\t' => (),
             '\n' => self.line += 1,
-            '(' => self.add_token(TokenType::LeftParen),
-            ')' => self.add_token(TokenType::RightParen),
-            '{' => self.add_token(TokenType::LeftBrace),
-            '}' => self.add_token(TokenType::RightBrace),
-            ',' => self.add_token(TokenType::Comma),
-            '.' => self.add_token(TokenType::Dot),
-            ';' => self.add_token(TokenType::Semicolon),
+            '(' => self.add_token(TokenKind::LeftParen),
+            ')' => self.add_token(TokenKind::RightParen),
+            '{' => self.add_token(TokenKind::LeftBrace),
+            '}' => self.add_token(TokenKind::RightBrace),
+            ',' => self.add_token(TokenKind::Comma),
+            '.' => self.add_token(TokenKind::Dot),
+            ';' => self.add_token(TokenKind::Semicolon),
             '+' => {
                 if self.match_next('=') {
-                    self.add_token(TokenType::PlusEqual)
+                    self.add_token(TokenKind::PlusEqual)
                 } else if self.match_next('+') {
-                    self.add_token(TokenType::PlusPlus)
+                    self.add_token(TokenKind::PlusPlus)
                 } else {
-                    self.add_token(TokenType::Plus)
+                    self.add_token(TokenKind::Plus)
                 }
             }
             '-' => {
                 if self.match_next('=') {
-                    self.add_token(TokenType::MinusEqual)
+                    self.add_token(TokenKind::MinusEqual)
                 } else if self.match_next('-') {
-                    self.add_token(TokenType::MinusMinus)
+                    self.add_token(TokenKind::MinusMinus)
                 } else {
-                    self.add_token(TokenType::Minus)
+                    self.add_token(TokenKind::Minus)
                 }
             }
             '*' => {
                 if self.match_next('=') {
-                    self.add_token(TokenType::StarEqual)
+                    self.add_token(TokenKind::StarEqual)
                 } else {
-                    self.add_token(TokenType::Star)
+                    self.add_token(TokenKind::Star)
                 }
             }
             '!' => {
                 if self.match_next('=') {
-                    self.add_token(TokenType::BangEqual)
+                    self.add_token(TokenKind::BangEqual)
                 } else {
-                    self.add_token(TokenType::Bang)
+                    self.add_token(TokenKind::Bang)
                 }
             }
             '=' => {
                 if self.match_next('=') {
-                    self.add_token(TokenType::EqualEqual)
+                    self.add_token(TokenKind::EqualEqual)
                 } else {
-                    self.add_token(TokenType::Equal)
+                    self.add_token(TokenKind::Equal)
                 }
             }
             '<' => {
                 if self.match_next('=') {
-                    self.add_token(TokenType::LessEqual)
+                    self.add_token(TokenKind::LessEqual)
                 } else {
-                    self.add_token(TokenType::Less)
+                    self.add_token(TokenKind::Less)
                 }
             }
             '>' => {
                 if self.match_next('=') {
-                    self.add_token(TokenType::GreaterEqual)
+                    self.add_token(TokenKind::GreaterEqual)
                 } else {
-                    self.add_token(TokenType::Greater)
+                    self.add_token(TokenKind::Greater)
                 }
             }
             '/' => {
@@ -125,21 +132,24 @@ impl Scanner {
                     }
                 } else if self.match_next('*') {
                     while !self.is_at_end() {
+                        if self.peek() == '\n' {
+                            self.line += 1;
+                        }
                         if self.advance() == '*' && self.peek() == '/' {
                             self.advance();
                             break;
                         }
                     }
                 } else if self.match_next('=') {
-                    self.add_token(TokenType::SlashEqual)
+                    self.add_token(TokenKind::SlashEqual)
                 } else {
-                    self.add_token(TokenType::Slash)
+                    self.add_token(TokenKind::Slash)
                 }
             }
             '"' => self.scan_string(),
             '0'..='9' => self.scan_number(),
             'a'..='z' | 'A'..='Z' | '_' => self.scan_identifier(),
-            _ => lexer_error(self.line, format!("Unexpected character {}", c)),
+            _ => self.report_error(self.line, format!("Unexpected character {}", c)),
         }
     }
 
@@ -151,12 +161,12 @@ impl Scanner {
             self.advance();
         }
         if self.is_at_end() {
-            lexer_error(self.line, String::from("Unterminated string"));
+            self.report_error(self.line, String::from("Unterminated string"));
             return;
         }
         self.advance(); // consume the closing "
         let value = String::from(&self.source[self.start + 1..self.current - 1]);
-        self.add_token(TokenType::String(value));
+        self.add_token(TokenKind::String(value));
     }
 
     fn scan_number(&mut self) {
@@ -173,7 +183,7 @@ impl Scanner {
             }
         }
 
-        self.add_token(TokenType::Number(
+        self.add_token(TokenKind::Number(
             self.source[self.start..self.current]
                 .parse::<f64>()
                 .unwrap(),
@@ -187,7 +197,7 @@ impl Scanner {
         let text = &self.source[self.start..self.current];
         let t_type = match KEYWORDS.get(text) {
             Some(keyword) => keyword.to_owned(),
-            None => TokenType::Identifier,
+            None => TokenKind::Identifier,
         };
         self.add_token(t_type);
     }
@@ -225,10 +235,13 @@ impl Scanner {
         }
     }
 
-    fn add_token(&mut self, p_type: TokenType) {
+    fn add_token(&mut self, p_type: TokenKind) {
         let text = &self.source[self.start..self.current];
-        self.tokens
-            .push(Token::new(p_type, String::from(text), self.line));
+        self.tokens.push(Token::new(
+            p_type,
+            String::from(text),
+            Span::new(self.line, self.start, self.current),
+        ));
     }
 
     fn is_at_end(&self) -> bool {
@@ -237,5 +250,10 @@ impl Scanner {
 
     fn is_alphanumeric(c: char) -> bool {
         c.is_ascii_alphanumeric() || c == '_'
+    }
+
+    fn report_error(&mut self, line: usize, message: String) {
+        self.errors
+            .push((Span::new(line, self.start, self.current), message));
     }
 }

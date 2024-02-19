@@ -3,25 +3,34 @@ use std::{
     fs::File,
     io::{self, Read, Write},
     path::Path,
+    process::ExitCode,
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 
 use lc_core::*;
 use lc_interpreter::*;
 
 fn run(input: String, context: &mut Interpreter) -> Result<()> {
+    let mut issues = TranslationErrors::new();
+
+    // Lexing
     let mut scanner = Scanner::new(input);
-    let tokens = scanner.scan_tokens();
+    let (tokens, mut errs) = scanner.scan_tokens();
+    issues.merge(&mut errs);
+
+    // Parsing
     let mut parser = Parser::new(tokens);
-    let statements = parser.parse();
-    dbg!(&statements);
+    let (statements, mut errs) = parser.parse();
+    issues.merge(&mut errs);
+
+    // Resolving and binding
     let mut resolver = Resolver::new(context);
-    resolver.resolve(&statements)?;
-    dbg!(&resolver);
-    if resolver.had_error() {
-        return Err(anyhow!("Failed to resolve variables"));
-    };
+    let (_, mut errs) = resolver.resolve(&statements);
+    issues.merge(&mut errs);
+
+    // Execution
+    issues.check()?;
     context.interpret(statements)?;
     Ok(())
 }
@@ -32,11 +41,13 @@ fn run_file(filename: String) -> Result<()> {
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
 
-    run(contents, &mut Interpreter::new())
+    let output = &mut io::stdout();
+    run(contents, &mut Interpreter::new(output))
 }
 
 fn run_prompt() -> Result<()> {
-    let mut context = Interpreter::new();
+    let output = &mut io::stdout();
+    let mut context = Interpreter::new(output);
     loop {
         let mut buffer = String::new();
         print!("> ");
@@ -46,17 +57,25 @@ fn run_prompt() -> Result<()> {
             // Windows: Ctrl+Z, Unix: Ctrl+D
             return Ok(());
         }
-        run(buffer, &mut context)?;
+        if let Err(e) = run(buffer, &mut context) {
+            eprint!("{}", e);
+        }
     }
 }
 
-fn main() -> Result<()> {
+fn main() -> ExitCode {
     if env::args().len() > 2 {
-        return Err(anyhow!("Usage: mylang [script]"));
+        eprintln!("Usage: mylang [script]");
+        return ExitCode::FAILURE;
     }
-    if env::args().len() == 2 {
-        return run_file(env::args().nth(1).unwrap());
+    let result = if env::args().len() == 2 {
+        run_file(env::args().nth(1).unwrap())
+    } else {
+        run_prompt()
+    };
+    if let Err(e) = result {
+        eprint!("{e}");
+        return ExitCode::FAILURE;
     }
-
-    run_prompt()
+    ExitCode::SUCCESS
 }

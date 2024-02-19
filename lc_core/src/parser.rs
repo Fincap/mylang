@@ -1,34 +1,42 @@
 use crate::{
-    error::parser_error,
-    expr::{Expr, LIMIT_FN_ARGS},
+    expr::{ExprKind, LIMIT_FN_ARGS},
     stmt::Stmt,
-    token::{Token, TokenError, TokenType, TokenType::*},
+    token::{
+        Token,
+        TokenKind::{self, *},
+    },
+    Expr, Ident, SpannedError, TranslationResult,
 };
 
-type ExprResult = Result<Expr, TokenError>;
-type StmtResult = Result<Stmt, TokenError>;
+type ExprResult = Result<Expr, SpannedError>;
+type StmtResult = Result<Stmt, SpannedError>;
 
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
+    errors: Vec<SpannedError>,
 }
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
-        Self { tokens, current: 0 }
+        Self {
+            tokens,
+            current: 0,
+            errors: Vec::new(),
+        }
     }
 
-    pub fn parse(&mut self) -> Vec<Stmt> {
+    pub fn parse(&mut self) -> TranslationResult<Vec<Stmt>> {
         let mut statements = Vec::new();
         while !self.is_at_end() {
             if let Some(statement) = self.declaration() {
                 statements.push(statement);
             }
         }
-        statements
+        (statements, self.errors.clone().into())
     }
 
     fn declaration(&mut self) -> Option<Stmt> {
-        let stmt = match self.peek().t_type {
+        let stmt = match self.peek().kind {
             Let => self.var_declaration(),
             Fn => self.fn_declaration(),
             _ => self.statement(),
@@ -38,14 +46,14 @@ impl Parser {
             Ok(stmt) => Some(stmt),
             Err(e) => {
                 self.synchronize();
-                parser_error(e);
+                self.report_error(e);
                 None
             }
         }
     }
 
     fn statement(&mut self) -> StmtResult {
-        match self.peek().t_type {
+        match self.peek().kind {
             LeftBrace => self.block(),
             Return => self.return_stmt(),
             Print => self.print_stmt(),
@@ -76,11 +84,11 @@ impl Parser {
     }
 
     fn return_stmt(&mut self) -> StmtResult {
-        self.advance();
+        let token = self.advance();
         let value = if !self.check(&Semicolon) {
             self.expression()?
         } else {
-            Expr::literal_null()
+            Expr::literal_null(token.span)
         };
         self.consume(Semicolon, "Expected ';' after return value.")?;
         Ok(Stmt::Return(value))
@@ -120,7 +128,7 @@ impl Parser {
     fn for_stmt(&mut self) -> StmtResult {
         self.advance();
         self.consume(LeftParen, "Expected '(' after 'for'.")?;
-        let initializer = match self.peek().t_type {
+        let initializer = match self.peek().kind {
             Semicolon => {
                 self.advance();
                 None
@@ -132,7 +140,7 @@ impl Parser {
         let condition = if !self.check(&Semicolon) {
             self.expression()?
         } else {
-            Expr::literal_bool(true)
+            Expr::literal_bool(true, self.previous().span)
         };
         self.consume(Semicolon, "Expected ';' after loop condition.")?;
 
@@ -145,25 +153,29 @@ impl Parser {
 
         let mut body = self.statement()?;
         if let Some(increment) = increment {
-            body = Stmt::Block(vec![body, Stmt::Expression(increment)]);
+            match &mut body {
+                Stmt::Block(body) => {
+                    body.push(Stmt::Expression(increment));
+                }
+                _ => body = Stmt::Block(vec![body, Stmt::Expression(increment)]),
+            }
         }
         body = Stmt::new_while(condition, body);
         if let Some(initializer) = initializer {
             body = Stmt::Block(vec![initializer, body]);
         }
-
         Ok(body)
     }
 
     fn var_declaration(&mut self) -> StmtResult {
         self.advance();
         let name = self.consume(Identifier, "Expected variable name.")?;
-        let mut initializer = Expr::literal_null();
+        let mut initializer = Expr::literal_null(name.span);
         if self.match_next(vec![Equal]) {
             initializer = self.expression()?;
         }
         self.consume(Semicolon, "Expect ';' after variable declaration")?;
-        Ok(Stmt::Let(name, initializer))
+        Ok(Stmt::Let(Ident::from_token(name), initializer))
     }
 
     fn fn_declaration(&mut self) -> StmtResult {
@@ -174,7 +186,7 @@ impl Parser {
         if !self.check(&RightParen) {
             loop {
                 if parameters.len() >= LIMIT_FN_ARGS {
-                    parser_error(
+                    self.report_error(
                         (
                             &self.peek(),
                             format!("Can't have more than {} parameters.", LIMIT_FN_ARGS),
@@ -182,7 +194,9 @@ impl Parser {
                             .into(),
                     )
                 }
-                parameters.push(self.consume(Identifier, "Expected parameter name.")?);
+                parameters.push(Ident::from_token(
+                    self.consume(Identifier, "Expected parameter name.")?,
+                ));
                 if !self.match_next(vec![Comma]) {
                     break;
                 }
@@ -195,7 +209,7 @@ impl Parser {
         let Stmt::Block(body) = self.block()? else {
             return Err((&self.peek(), "Incomplete function body.").into());
         };
-        Ok(Stmt::Function(name, parameters, body))
+        Ok(Stmt::Function(Ident::from_token(name), parameters, body))
     }
 
     fn expression(&mut self) -> ExprResult {
@@ -208,11 +222,11 @@ impl Parser {
             let equals = self.previous();
             let value = self.assignment()?;
 
-            if let Expr::Variable(token) = ex {
-                return Ok(Expr::assign(token, value));
+            if let ExprKind::Variable(ident) = ex.kind {
+                return Ok(Expr::assign(ident, value));
             }
             // Report error but don't throw because parser isn't in a confused state
-            parser_error((&equals, "Invalid assignment target.").into());
+            self.report_error((&equals, "Invalid assignment target.").into());
         }
         Ok(ex)
     }
@@ -223,7 +237,7 @@ impl Parser {
             let op_assign = self.previous();
             let right = self.assignment()?;
             let mut op_arithmetic = op_assign.clone();
-            op_arithmetic.t_type = match op_assign.t_type {
+            op_arithmetic.kind = match op_assign.kind {
                 PlusEqual => Plus,
                 MinusEqual => Minus,
                 StarEqual => Star,
@@ -232,11 +246,11 @@ impl Parser {
             };
 
             let right = Expr::binary(ex.to_owned(), op_arithmetic, right);
-            if let Expr::Variable(token) = ex {
-                return Ok(Expr::assign(token, right));
+            if let ExprKind::Variable(op) = ex.kind {
+                return Ok(Expr::assign(op, right));
             }
 
-            parser_error((&op_assign, "Invalid assignment target.").into());
+            self.report_error((&op_assign, "Invalid assignment target.").into());
         }
         Ok(ex)
     }
@@ -315,7 +329,7 @@ impl Parser {
         if self.match_next(vec![PlusPlus, MinusMinus]) {
             let op = self.previous();
             let mut op_expanded = op.clone();
-            op_expanded.t_type = match op.t_type {
+            op_expanded.kind = match op.kind {
                 PlusPlus => Plus,
                 MinusMinus => Minus,
                 _ => unreachable!(),
@@ -323,12 +337,12 @@ impl Parser {
             let right = Expr::binary(
                 ex.to_owned(),
                 op_expanded.to_owned(),
-                Expr::literal_number(1.0),
+                Expr::literal_number(1.0, ex.span.to(op_expanded.span)),
             );
-            if let Expr::Variable(token) = ex {
-                return Ok(Expr::assign(token, right));
+            if let ExprKind::Variable(op) = ex.kind {
+                return Ok(Expr::assign(op, right));
             }
-            parser_error((&op_expanded, "Invalid increment/decrement target.").into());
+            self.report_error((&op_expanded, "Invalid increment/decrement target.").into());
         }
         Ok(ex)
     }
@@ -346,11 +360,12 @@ impl Parser {
     }
 
     fn finish_call(&mut self, ex: &Expr) -> ExprResult {
+        let left_paren = self.previous();
         let mut arguments = Vec::new();
         if !self.check(&RightParen) {
             loop {
                 if arguments.len() >= LIMIT_FN_ARGS {
-                    parser_error(
+                    self.report_error(
                         (
                             &self.peek(),
                             format!("Can't have more than {} arguments.", LIMIT_FN_ARGS),
@@ -364,32 +379,36 @@ impl Parser {
                 }
             }
         }
-        let paren = self.consume(RightParen, "Expected ')' after arguments.")?;
-        Ok(Expr::call(ex.to_owned(), paren, arguments))
+        let right_paren = self.consume(RightParen, "Expected ')' after arguments.")?;
+        Ok(Expr::call(
+            ex.to_owned(),
+            left_paren.span.to(right_paren.span),
+            arguments,
+        ))
     }
 
     fn primary(&mut self) -> ExprResult {
         let token = self.peek();
-        match token.t_type {
+        match token.kind {
             False => {
-                self.advance();
-                Ok(Expr::literal_bool(false))
+                let token = self.advance();
+                Ok(Expr::literal_bool(false, token.span))
             }
             True => {
-                self.advance();
-                Ok(Expr::literal_bool(true))
+                let token = self.advance();
+                Ok(Expr::literal_bool(true, token.span))
             }
             Null => {
-                self.advance();
-                Ok(Expr::literal_null())
+                let token = self.advance();
+                Ok(Expr::literal_null(token.span))
             }
             Number(num) => {
-                self.advance();
-                Ok(Expr::literal_number(num))
+                let token = self.advance();
+                Ok(Expr::literal_number(num, token.span))
             }
             String(str) => {
-                self.advance();
-                Ok(Expr::literal_string(str))
+                let token = self.advance();
+                Ok(Expr::literal_string(str, token.span))
             }
             LeftParen => {
                 self.advance();
@@ -414,7 +433,7 @@ impl Parser {
         }
     }
 
-    fn match_next(&mut self, types: Vec<TokenType>) -> bool {
+    fn match_next(&mut self, types: Vec<TokenKind>) -> bool {
         for t_type in &types {
             if self.check(t_type) {
                 self.advance();
@@ -424,11 +443,11 @@ impl Parser {
         false
     }
 
-    fn check(&mut self, t_type: &TokenType) -> bool {
+    fn check(&mut self, t_type: &TokenKind) -> bool {
         if self.is_at_end() {
             false
         } else {
-            self.peek().t_type == *t_type
+            self.peek().kind == *t_type
         }
     }
 
@@ -440,7 +459,7 @@ impl Parser {
     }
 
     fn is_at_end(&self) -> bool {
-        self.peek().t_type == EOF
+        self.peek().kind == EOF
     }
 
     fn peek(&self) -> Token {
@@ -451,7 +470,7 @@ impl Parser {
         self.tokens[self.current - 1].to_owned()
     }
 
-    fn consume(&mut self, t_type: TokenType, message: &'static str) -> Result<Token, TokenError> {
+    fn consume(&mut self, t_type: TokenKind, message: &'static str) -> Result<Token, SpannedError> {
         if self.check(&t_type) {
             Ok(self.advance())
         } else {
@@ -462,10 +481,10 @@ impl Parser {
     fn synchronize(&mut self) {
         self.advance();
         while !self.is_at_end() {
-            if self.previous().t_type == Semicolon {
+            if self.previous().kind == Semicolon {
                 return;
             }
-            match self.peek().t_type {
+            match self.peek().kind {
                 Class | Fn | Let | For | If | While | Print | Return => {
                     return;
                 }
@@ -473,5 +492,9 @@ impl Parser {
             }
             self.advance();
         }
+    }
+
+    fn report_error(&mut self, e: SpannedError) {
+        self.errors.push(e);
     }
 }
