@@ -248,9 +248,9 @@ impl<'a> Interpreter<'a> {
         }
     }
 
-    fn visit_logical_expr(&mut self, left: &Expr, op: &Token, right: &Expr) -> ExprResult {
+    fn visit_logical_expr(&mut self, left: &Expr, op: &LogicOp, right: &Expr) -> ExprResult {
         let left = self.evaluate(left)?;
-        if op.kind == TokenKind::Or && left.is_truthy() {
+        if *op == LogicOp::Or && left.is_truthy() {
             return Ok(left);
         }
         if !left.is_truthy() {

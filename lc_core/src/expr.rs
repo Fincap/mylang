@@ -14,14 +14,14 @@ pub enum ExprKind {
     Assign(Ident, Box<Expr>),
     /// (`left`, `op`, `right`)
     Binary(Box<Expr>, BinaryOp, Box<Expr>),
-    /// (`callee`, `paren`, `args`)
+    /// (`callee`, `span`, `args`)
     Call(Box<Expr>, Span, Vec<Expr>),
     /// (`expression`)
     Grouping(Box<Expr>),
     /// (`literal`)
     Literal(Literal),
     /// (`left`, `op`, `right`)
-    Logical(Box<Expr>, Token, Box<Expr>),
+    Logical(Box<Expr>, LogicOp, Box<Expr>),
     /// (`op`, `right`)
     Unary(UnaryOp, Box<Expr>),
     /// (`identifier`)
@@ -126,6 +126,34 @@ impl UnaryOp {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum LogicOp {
+    And,
+    Or,
+}
+impl From<TokenKind> for LogicOp {
+    fn from(value: TokenKind) -> Self {
+        match value {
+            TokenKind::And => Self::And,
+            TokenKind::Or => Self::Or,
+            _ => unreachable!(),
+        }
+    }
+}
+impl From<Token> for LogicOp {
+    fn from(value: Token) -> Self {
+        Self::from(value.kind)
+    }
+}
+impl LogicOp {
+    pub fn as_str(&self) -> &str {
+        match self {
+            LogicOp::And => "and",
+            LogicOp::Or => "or",
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Expr {
     id: usize,
@@ -189,7 +217,7 @@ impl Expr {
     pub fn logical(left: Expr, op: Token, right: Expr) -> Self {
         let span = left.span.to(right.span);
         Self::new(
-            ExprKind::Logical(Box::new(left), op.to_owned(), Box::new(right)),
+            ExprKind::Logical(Box::new(left), op.into(), Box::new(right)),
             span,
         )
     }
