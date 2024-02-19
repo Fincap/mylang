@@ -58,21 +58,25 @@ impl<'a> TranslationErrors {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct RuntimeError {
-    line: usize, //TODO: change to Option<Span>. Once Expr contains their respective Span, set this to first available Span when bubbling up on error.
+    span: Option<Span>,
     message: String,
 }
 impl fmt::Display for RuntimeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "[line {}] RuntimeError: {}", self.line, self.message)
+        let mut line = String::new();
+        if let Some(span) = self.span {
+            line = format!("[line {}] ", span.line);
+        }
+        writeln!(f, "{}RuntimeError: {}", line, self.message)
     }
 }
 impl error::Error for RuntimeError {}
 impl From<SpannedError> for RuntimeError {
     fn from(value: SpannedError) -> Self {
         Self {
-            line: value.span.line,
+            span: Some(value.span),
             message: value.message,
         }
     }
@@ -80,16 +84,24 @@ impl From<SpannedError> for RuntimeError {
 impl RuntimeError {
     pub fn new(message: String) -> Self {
         Self {
-            line: 0,
-            message: message,
+            span: None,
+            message,
         }
     }
 
     pub fn with_span(message: String, span: Span) -> Self {
         Self {
-            line: span.line,
-            message: message,
+            span: Some(span),
+            message,
         }
+    }
+
+    pub fn has_span(&self) -> bool {
+        self.span.is_some()
+    }
+
+    pub fn set_span(&mut self, span: Span) {
+        self.span = Some(span)
     }
 }
 
