@@ -27,10 +27,7 @@ impl EnvironmentStack {
     }
 
     pub fn define(&mut self, name: &Ident, value: Value) {
-        self.stack
-            .last_mut()
-            .unwrap()
-            .define(name.symbol.to_string(), value);
+        self.stack.last_mut().unwrap().define(name.symbol, value);
     }
 
     pub fn get(&self, name: &Ident) -> Result<Value, SpannedError> {
@@ -79,7 +76,7 @@ impl EnvironmentStack {
 
 #[derive(Clone, Default, Debug)]
 pub struct Environment {
-    values: HashMap<String, Value>,
+    values: HashMap<Symbol, Value>,
 }
 impl Environment {
     pub fn new() -> Self {
@@ -88,12 +85,19 @@ impl Environment {
         }
     }
 
-    pub fn define(&mut self, name: String, value: Value) {
+    pub fn define(&mut self, name: Symbol, value: Value) {
         self.values.insert(name, value);
     }
 
+    pub fn define_builtin<T>(&mut self, name: &str)
+    where
+        T: for<'b> Callable<'b> + Default + 'static,
+    {
+        self.define(Symbol::ident(name), Value::Function(Box::<T>::default()));
+    }
+
     pub fn get(&self, name: &Ident) -> Result<Value, SpannedError> {
-        if let Some(value) = self.values.get(&name.symbol.to_string()) {
+        if let Some(value) = self.values.get(&name.symbol) {
             Ok(value.clone())
         } else {
             Err((name.span, format!("Undefined variable '{}'", name.symbol)).into())
@@ -101,8 +105,8 @@ impl Environment {
     }
 
     pub fn assign(&mut self, name: &Ident, value: Value) -> Result<(), SpannedError> {
-        if self.values.contains_key(&name.symbol.to_string()) {
-            self.values.insert(name.symbol.to_string(), value);
+        if self.values.contains_key(&name.symbol) {
+            self.values.insert(name.symbol, value);
             Ok(())
         } else {
             Err((name.span, format!("Undefined variable '{}'", name.symbol)).into())
@@ -110,6 +114,6 @@ impl Environment {
     }
 
     pub fn contains(&self, name: &Ident) -> bool {
-        self.values.contains_key(&name.symbol.to_string())
+        self.values.contains_key(&name.symbol)
     }
 }

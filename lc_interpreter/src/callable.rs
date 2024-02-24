@@ -99,8 +99,7 @@ impl<'a> Callable<'a> for Function {
                 .into();
         }
         for (i, arg) in arguments.iter().enumerate().take(self.params.len()) {
-            self.closure
-                .define(self.params[i].symbol.to_string(), arg.to_owned())
+            self.closure.define(self.params[i].symbol, arg.to_owned())
         }
 
         match interpreter.execute_block(&self.body, &self.closure) {
@@ -129,12 +128,12 @@ impl Function {
 }
 
 pub fn define_builtins(environment: &mut Environment) {
-    environment.define("clock".into(), Value::Function(Box::new(LcClock)));
-    environment.define("typeof".into(), Value::Function(Box::new(LcTypeof)));
-    environment.define("sleep".into(), Value::Function(Box::new(LcSleep)));
+    environment.define_builtin::<LcClock>("clock");
+    environment.define_builtin::<LcTypeof>("typeof");
+    environment.define_builtin::<LcSleep>("sleep");
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct LcClock;
 impl<'a> Callable<'a> for LcClock {
     fn call(&mut self, _: &'a mut Interpreter, _: &[Value]) -> Throw {
@@ -156,7 +155,7 @@ impl<'a> Callable<'a> for LcClock {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct LcTypeof;
 impl<'a> Callable<'a> for LcTypeof {
     fn call(&mut self, _: &mut Interpreter, arguments: &[Value]) -> Throw {
@@ -192,7 +191,7 @@ impl<'a> Callable<'a> for LcTypeof {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct LcSleep;
 impl<'a> Callable<'a> for LcSleep {
     fn call(&mut self, _: &'a mut Interpreter, arguments: &[Value]) -> Throw {
