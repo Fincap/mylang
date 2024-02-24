@@ -27,7 +27,7 @@ pub enum ExprKind {
     Variable(Ident),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Ident {
     pub symbol: Symbol,
     pub span: Span,
