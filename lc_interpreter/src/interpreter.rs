@@ -211,7 +211,7 @@ impl<'a> Interpreter<'a> {
                     let Literal::String(right) = right else {
                         return Err((span, "Cannot concatenate non-string value.").into());
                     };
-                    Ok(Literal::String(str.to_owned() + &right).into())
+                    Ok(Literal::String(str + right).into())
                 }
                 _ => Err((span, "Operands must be two numbers or two strings.").into()),
             },

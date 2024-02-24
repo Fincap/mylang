@@ -4,6 +4,7 @@ mod lexer;
 mod literal;
 mod parser;
 mod stmt;
+mod symbol;
 mod token;
 
 pub use crate::error::*;
@@ -12,4 +13,5 @@ pub use crate::lexer::*;
 pub use crate::literal::*;
 pub use crate::parser::*;
 pub use crate::stmt::*;
+pub use crate::symbol::*;
 pub use crate::token::*;

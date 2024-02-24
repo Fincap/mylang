@@ -1,11 +1,11 @@
 use std::hash::{Hash, Hasher};
 use std::{fmt, mem, ops};
 
-use crate::RuntimeError;
+use crate::{RuntimeError, Symbol};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Literal {
-    String(String),
+    String(Symbol),
     Number(f64),
     Bool(bool),
     Null,
@@ -43,7 +43,7 @@ impl ops::Add for Literal {
                 _ => err,
             },
             Literal::String(lhs) => match rhs {
-                Literal::String(rhs) => Ok(Literal::String([lhs, rhs].join(""))),
+                Literal::String(rhs) => Ok(Literal::String(lhs + rhs)),
                 _ => err,
             },
             _ => err,
@@ -112,7 +112,7 @@ impl ops::Not for Literal {
 impl Literal {
     pub fn as_str(&self) -> String {
         match self {
-            Literal::String(str) => str.to_owned(),
+            Literal::String(str) => str.to_string(),
             Literal::Number(num) => num.to_string(),
             Literal::Bool(lit) => lit.to_string(),
             Literal::Null => String::from("null"),

@@ -2,7 +2,7 @@ use std::hash::Hash;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::token::Token;
-use crate::{Literal, Span, TokenKind};
+use crate::{Literal, Span, Symbol, TokenKind};
 
 pub const LIMIT_FN_ARGS: usize = 255;
 static EXPR_ID: AtomicUsize = AtomicUsize::new(0);
@@ -198,7 +198,7 @@ impl Expr {
     }
 
     pub fn literal_string(str: String, span: Span) -> Self {
-        Self::new(ExprKind::Literal(Literal::String(str)), span)
+        Self::new(ExprKind::Literal(Literal::String(Symbol::new(&str))), span)
     }
 
     pub fn literal_number(num: f64, span: Span) -> Self {
