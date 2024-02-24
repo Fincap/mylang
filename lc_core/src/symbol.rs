@@ -11,6 +11,7 @@ use crate::Literal;
 type InternTable = Lazy<Mutex<DefaultStringInterner>>;
 
 static STRING_TABLE: InternTable = Lazy::new(|| Mutex::new(StringInterner::default()));
+static IDENT_TABLE: InternTable = Lazy::new(|| Mutex::new(StringInterner::default()));
 
 #[derive(Clone, Copy, Debug)]
 pub struct Symbol {
@@ -59,6 +60,13 @@ impl Symbol {
         Self {
             symbol: STRING_TABLE.lock().unwrap().get_or_intern(string),
             table: &STRING_TABLE,
+        }
+    }
+
+    pub fn ident(string: &str) -> Self {
+        Self {
+            symbol: IDENT_TABLE.lock().unwrap().get_or_intern(string),
+            table: &IDENT_TABLE,
         }
     }
 

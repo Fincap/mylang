@@ -29,17 +29,20 @@ pub enum ExprKind {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Ident {
-    pub symbol: String,
+    pub symbol: Symbol,
     pub span: Span,
 }
 impl Ident {
-    pub fn new(symbol: String, span: Span) -> Self {
-        Self { symbol, span }
+    pub fn new(string: String, span: Span) -> Self {
+        Self {
+            symbol: Symbol::ident(&string),
+            span,
+        }
     }
 
     pub fn from_token(token: Token) -> Self {
         Self {
-            symbol: token.lexeme,
+            symbol: Symbol::ident(&token.lexeme),
             span: token.span,
         }
     }

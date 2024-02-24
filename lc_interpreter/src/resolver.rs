@@ -168,7 +168,11 @@ impl<'a, 'b> Resolver<'a, 'b> {
     }
 
     fn visit_var_expr(&mut self, ex: &Expr, id: &Ident) -> ResolverResult {
-        if let Some(initialized) = self.scopes.last_mut().and_then(|s| s.get(&id.symbol)) {
+        if let Some(initialized) = self
+            .scopes
+            .last_mut()
+            .and_then(|s| s.get(&id.symbol.to_string()))
+        {
             if !initialized {
                 self.report_error(
                     (ex.span, "Can't read local variable in its own initializer.").into(),
@@ -185,7 +189,7 @@ impl<'a, 'b> Resolver<'a, 'b> {
             if self
                 .scopes
                 .get(i)
-                .is_some_and(|s| s.contains_key(&id.symbol))
+                .is_some_and(|s| s.contains_key(&id.symbol.to_string()))
             {
                 self.interpreter.resolve(ex, self.scopes.len() - 1 - i);
                 return;
@@ -197,16 +201,16 @@ impl<'a, 'b> Resolver<'a, 'b> {
         let Some(scope) = self.scopes.last_mut() else {
             return Ok(());
         };
-        if scope.contains_key(&id.symbol) {
+        if scope.contains_key(&id.symbol.to_string()) {
             return Err((id.span, "Already a variable with this name in this scope.").into());
         }
-        scope.insert(id.symbol.to_owned(), false);
+        scope.insert(id.symbol.to_string(), false);
         Ok(())
     }
 
     fn define(&mut self, id: &Ident) {
         if let Some(scope) = self.scopes.last_mut() {
-            scope.insert(id.symbol.to_owned(), true);
+            scope.insert(id.symbol.to_string(), true);
         };
     }
 

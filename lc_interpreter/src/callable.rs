@@ -100,7 +100,7 @@ impl<'a> Callable<'a> for Function {
         }
         for (i, arg) in arguments.iter().enumerate().take(self.params.len()) {
             self.closure
-                .define(self.params[i].symbol.to_owned(), arg.to_owned())
+                .define(self.params[i].symbol.to_string(), arg.to_owned())
         }
 
         match interpreter.execute_block(&self.body, &self.closure) {

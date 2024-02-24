@@ -30,7 +30,7 @@ impl EnvironmentStack {
         self.stack
             .last_mut()
             .unwrap()
-            .define(name.symbol.to_owned(), value);
+            .define(name.symbol.to_string(), value);
     }
 
     pub fn get(&self, name: &Ident) -> Result<Value, SpannedError> {
@@ -93,7 +93,7 @@ impl Environment {
     }
 
     pub fn get(&self, name: &Ident) -> Result<Value, SpannedError> {
-        if let Some(value) = self.values.get(&name.symbol) {
+        if let Some(value) = self.values.get(&name.symbol.to_string()) {
             Ok(value.clone())
         } else {
             Err((name.span, format!("Undefined variable '{}'", name.symbol)).into())
@@ -101,8 +101,8 @@ impl Environment {
     }
 
     pub fn assign(&mut self, name: &Ident, value: Value) -> Result<(), SpannedError> {
-        if self.values.contains_key(&name.symbol) {
-            self.values.insert(name.symbol.to_owned(), value);
+        if self.values.contains_key(&name.symbol.to_string()) {
+            self.values.insert(name.symbol.to_string(), value);
             Ok(())
         } else {
             Err((name.span, format!("Undefined variable '{}'", name.symbol)).into())
@@ -110,6 +110,6 @@ impl Environment {
     }
 
     pub fn contains(&self, name: &Ident) -> bool {
-        self.values.contains_key(&name.symbol)
+        self.values.contains_key(&name.symbol.to_string())
     }
 }
