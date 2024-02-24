@@ -3,7 +3,7 @@ use std::{fmt, mem, ops};
 
 use crate::RuntimeError;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Literal {
     String(String),
     Number(f64),
@@ -90,6 +90,23 @@ impl ops::Div for Literal {
             },
             _ => err,
         }
+    }
+}
+impl ops::Neg for Literal {
+    type Output = Result<Literal, RuntimeError>;
+
+    fn neg(self) -> Self::Output {
+        match self {
+            Literal::Number(val) => Ok(Literal::Number(-val)),
+            _ => Err(RuntimeError::new("Operand must be a number.".into())),
+        }
+    }
+}
+impl ops::Not for Literal {
+    type Output = Literal;
+
+    fn not(self) -> Self::Output {
+        Literal::Bool(!self.is_truthy())
     }
 }
 impl Literal {
