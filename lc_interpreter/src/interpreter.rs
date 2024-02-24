@@ -84,7 +84,7 @@ impl<'a> Interpreter<'a> {
         self.execute_block(statements, &Environment::new())
     }
 
-    fn visit_class_stmt(&mut self, id: &Ident, methods: &Vec<Stmt>) -> StmtResult {
+    fn visit_class_stmt(&mut self, id: &Ident, _methods: &Vec<Stmt>) -> StmtResult {
         self.environment.define(id, Value::Literal(Literal::Null));
         //let class = Stmt::Class((), ())
         Ok(())
