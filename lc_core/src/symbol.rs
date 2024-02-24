@@ -2,7 +2,7 @@ use core::fmt;
 use std::{ops, sync::Mutex};
 
 use once_cell::sync::Lazy;
-use string_interner::{DefaultStringInterner, StringInterner};
+use string_interner::{DefaultStringInterner, StringInterner, Symbol as InternedSymbol};
 
 use crate::Literal;
 
@@ -50,5 +50,9 @@ impl Symbol {
 
     pub fn as_lit(&self) -> Literal {
         Literal::String(*self)
+    }
+
+    pub fn index(&self) -> usize {
+        self.symbol.to_usize()
     }
 }
