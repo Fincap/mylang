@@ -198,7 +198,10 @@ impl Expr {
     }
 
     pub fn literal_string(str: String, span: Span) -> Self {
-        Self::new(ExprKind::Literal(Literal::String(Symbol::new(&str))), span)
+        Self::new(
+            ExprKind::Literal(Literal::String(Symbol::string(&str))),
+            span,
+        )
     }
 
     pub fn literal_number(num: f64, span: Span) -> Self {

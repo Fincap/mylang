@@ -180,7 +180,7 @@ impl<'a> Callable<'a> for LcTypeof {
             },
             Value::Function(_) => "Function",
         };
-        Literal::String(Symbol::new(res)).into()
+        Literal::String(Symbol::string(res)).into()
     }
 
     fn arity(&self) -> usize {
