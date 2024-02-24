@@ -3,7 +3,7 @@ use std::{fmt, mem, ops};
 
 use crate::{RuntimeError, Symbol};
 
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub enum Literal {
     String(Symbol),
     Number(f64),
