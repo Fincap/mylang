@@ -72,6 +72,10 @@ impl Symbol {
         Literal::String(*self)
     }
 
+    pub fn index(&self) -> u64 {
+        self.symbol.as_u64()
+    }
+
     fn resolve(&self, symbol: InternedKey) -> String {
         self.table
             .lock()
