@@ -93,7 +93,10 @@ impl Environment {
     where
         T: for<'b> Callable<'b> + Default + 'static,
     {
-        self.define(Symbol::ident(name), Value::Function(Box::<T>::default()));
+        self.define(
+            Symbol::ident(name.to_string()),
+            Value::Function(Box::<T>::default()),
+        );
     }
 
     pub fn get(&self, name: &Ident) -> Result<Value, SpannedError> {

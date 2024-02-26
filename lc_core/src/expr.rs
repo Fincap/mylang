@@ -35,14 +35,14 @@ pub struct Ident {
 impl Ident {
     pub fn new(string: String, span: Span) -> Self {
         Self {
-            symbol: Symbol::ident(&string),
+            symbol: Symbol::ident(string),
             span,
         }
     }
 
     pub fn from_token(token: Token) -> Self {
         Self {
-            symbol: Symbol::ident(&token.lexeme),
+            symbol: Symbol::ident(token.lexeme),
             span: token.span,
         }
     }
@@ -202,7 +202,7 @@ impl Expr {
 
     pub fn literal_string(str: String, span: Span) -> Self {
         Self::new(
-            ExprKind::Literal(Literal::String(Symbol::string(&str))),
+            ExprKind::Literal(Literal::String(Symbol::string(str))),
             span,
         )
     }

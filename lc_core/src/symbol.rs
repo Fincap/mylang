@@ -2,20 +2,18 @@ use core::fmt;
 use std::{hash, ops, sync::Mutex};
 
 use once_cell::sync::Lazy;
-use string_interner::{
-    DefaultStringInterner, DefaultSymbol, StringInterner, Symbol as InternedSymbol,
-};
+use stringtern::{InternedKey, StringInterner};
 
 use crate::Literal;
 
-type InternTable = Lazy<Mutex<DefaultStringInterner>>;
+type InternTable = Lazy<Mutex<StringInterner>>;
 
 static STRING_TABLE: InternTable = Lazy::new(|| Mutex::new(StringInterner::default()));
 static IDENT_TABLE: InternTable = Lazy::new(|| Mutex::new(StringInterner::default()));
 
 #[derive(Clone, Copy, Debug)]
 pub struct Symbol {
-    symbol: string_interner::DefaultSymbol,
+    symbol: InternedKey,
     table: &'static InternTable,
 }
 impl hash::Hash for Symbol {
@@ -52,20 +50,20 @@ impl ops::Add for Symbol {
     fn add(self, rhs: Self) -> Self::Output {
         let lhs = self.resolve(self.symbol);
         let rhs = self.resolve(rhs.symbol);
-        Symbol::string(&[lhs, rhs].join(""))
+        Symbol::string([lhs, rhs].join(""))
     }
 }
 impl Symbol {
-    pub fn string(string: &str) -> Self {
+    pub fn string(string: String) -> Self {
         Self {
-            symbol: STRING_TABLE.lock().unwrap().get_or_intern(string),
+            symbol: STRING_TABLE.lock().unwrap().get_or_insert(string),
             table: &STRING_TABLE,
         }
     }
 
-    pub fn ident(string: &str) -> Self {
+    pub fn ident(string: String) -> Self {
         Self {
-            symbol: IDENT_TABLE.lock().unwrap().get_or_intern(string),
+            symbol: IDENT_TABLE.lock().unwrap().get_or_insert(string),
             table: &IDENT_TABLE,
         }
     }
@@ -74,11 +72,7 @@ impl Symbol {
         Literal::String(*self)
     }
 
-    pub fn index(&self) -> usize {
-        self.symbol.to_usize()
-    }
-
-    fn resolve(&self, symbol: DefaultSymbol) -> String {
+    fn resolve(&self, symbol: InternedKey) -> String {
         self.table
             .lock()
             .unwrap()

@@ -10,4 +10,4 @@ anyhow = "1.0.79"
 once_cell = "1.19.0"
 phf = { version = "0.11.2", features = ["macros"] }
 slotmap = "1.0.7"
-string-interner = "0.15.0"
+stringtern = { path = "../../stringtern" }
