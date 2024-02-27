@@ -11,7 +11,7 @@ type InternTable = Lazy<Mutex<StringInterner>>;
 static STRING_TABLE: InternTable = Lazy::new(|| Mutex::new(StringInterner::default()));
 static IDENT_TABLE: InternTable = Lazy::new(|| Mutex::new(StringInterner::default()));
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub struct Symbol {
     symbol: InternedKey,
     table: &'static InternTable,
@@ -20,6 +20,20 @@ impl hash::Hash for Symbol {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.symbol.hash(state);
         state.write_usize(self.table as *const InternTable as usize);
+    }
+}
+impl fmt::Display for Symbol {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.resolve(self.symbol))
+    }
+}
+impl fmt::Debug for Symbol {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Symbol")
+            .field("symbol", &format_args!("{:#x}", self.symbol))
+            .field("table", &format_args!("{:p}", self.table))
+            .field("string", &format_args!("{}", self.resolve(self.symbol)))
+            .finish()
     }
 }
 impl PartialEq for Symbol {
@@ -37,11 +51,6 @@ impl PartialOrd for Symbol {
 impl Ord for Symbol {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.symbol.cmp(&other.symbol)
-    }
-}
-impl fmt::Display for Symbol {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.resolve(self.symbol))
     }
 }
 impl ops::Add for Symbol {
