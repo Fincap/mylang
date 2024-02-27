@@ -24,7 +24,7 @@ impl hash::Hash for Symbol {
 }
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.resolve(self.symbol))
+        write!(f, "{}", self.resolve())
     }
 }
 impl fmt::Debug for Symbol {
@@ -32,7 +32,7 @@ impl fmt::Debug for Symbol {
         f.debug_struct("Symbol")
             .field("symbol", &format_args!("{:#x}", self.symbol))
             .field("table", &format_args!("{:p}", self.table))
-            .field("string", &format_args!("{}", self.resolve(self.symbol)))
+            .field("string", &format_args!("{}", self.resolve()))
             .finish()
     }
 }
@@ -57,8 +57,8 @@ impl ops::Add for Symbol {
     type Output = Symbol;
 
     fn add(self, rhs: Self) -> Self::Output {
-        let lhs = self.resolve(self.symbol);
-        let rhs = self.resolve(rhs.symbol);
+        let lhs = self.resolve();
+        let rhs = rhs.resolve();
         Symbol::string([lhs, rhs].join(""))
     }
 }
@@ -85,11 +85,11 @@ impl Symbol {
         self.symbol.as_u64()
     }
 
-    fn resolve(&self, symbol: InternedKey) -> String {
+    pub fn resolve(&self) -> String {
         self.table
             .lock()
             .unwrap()
-            .resolve(symbol)
+            .resolve(self.symbol)
             .unwrap()
             .to_owned()
     }
