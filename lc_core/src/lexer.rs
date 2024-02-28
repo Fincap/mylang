@@ -131,15 +131,7 @@ impl Scanner {
                         self.advance();
                     }
                 } else if self.match_next('*') {
-                    while !self.is_at_end() {
-                        if self.peek() == '\n' {
-                            self.line += 1;
-                        }
-                        if self.advance() == '*' && self.peek() == '/' {
-                            self.advance();
-                            break;
-                        }
-                    }
+                    self.scan_multiline_comment();
                 } else if self.match_next('=') {
                     self.add_token(TokenKind::SlashEqual)
                 } else {
@@ -200,6 +192,26 @@ impl Scanner {
             None => TokenKind::Identifier,
         };
         self.add_token(t_type);
+    }
+
+    fn scan_multiline_comment(&mut self) {
+        let mut nesting = 1;
+        while !self.is_at_end() {
+            if self.peek() == '\n' {
+                self.line += 1;
+            }
+            let next = self.advance();
+            if next == '/' && self.peek() == '*' {
+                self.advance();
+                nesting += 1;
+            } else if next == '*' && self.peek() == '/' {
+                self.advance();
+                nesting -= 1;
+                if nesting <= 0 {
+                    break;
+                }
+            }
+        }
     }
 
     fn advance(&mut self) -> char {
