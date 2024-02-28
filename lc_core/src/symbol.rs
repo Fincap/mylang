@@ -77,6 +77,14 @@ impl Symbol {
         }
     }
 
+    pub fn string_str(string: &str) -> Self {
+        Self::string(string.to_string())
+    }
+
+    pub fn ident_str(string: &str) -> Self {
+        Self::ident(string.to_string())
+    }
+
     pub fn as_lit(&self) -> Literal {
         Literal::String(*self)
     }
